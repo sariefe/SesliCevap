@@ -22,10 +22,10 @@ data class Part(
 
 @JsonClass(generateAdapter = true)
 data class GenerationConfig(
-    val temperature: Float? = 0.7f,
+    val temperature: Float? = 0.9f,
     val topP: Float? = 0.95f,
     val topK: Int? = 40,
-    val maxOutputTokens: Int? = 1024
+    val maxOutputTokens: Int? = 400
 )
 
 @JsonClass(generateAdapter = true)

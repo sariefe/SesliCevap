@@ -233,7 +233,7 @@ class VoiceAssistantRepositoryImpl(
 
     private suspend fun fetchAiAnswer(prompt: String): String {
         val apiKey = BuildConfig.GEMINI_API_KEY
-        val hasValidApiKey = false
+        val hasValidApiKey = apiKey.isNotBlank()
 
         if (hasValidApiKey) {
             try {
@@ -247,8 +247,15 @@ class VoiceAssistantRepositoryImpl(
                     systemInstruction = Content(
                         parts = listOf(
                             Part(
-                                text = "Sen Türkçe konuşan samimi, akıllı, net ve sesli yanıt için optimize edilmiş bir yapay zeka asistanısın. " +
-                                        "Cevapların anlaşılır, akıcı ve sesli dinlemeye uygun olsun. Karmaşık semboller ve aşırı uzun listelerden kaçın."
+                                text = "Sen samimi, sıcak ve anlayışlı bir Türkçe sesli asistansın. " +
+                                        "Konuşma diline çok yakın yaz — kısa cümleler kur, 'yani', 'aslında', 'şöyle düşün' gibi " +
+                                        "günlük bağlaçlar kullan. Robotik veya resmi bir dil kullanma. " +
+                                        "Kullanıcının duygusunu yakala: mutluysa sevinç paylaş, " +
+                                        "merak ediyorsa heyecanla anlat, üzgünse empati kur. " +
+                                        "Gerektiğinde 'Hmm', 'Şöyle söyleyeyim', 'Aslında bakacak olursak' gibi " +
+                                        "düşünce geçişleri ekle — bu sesi daha doğal kılar. " +
+                                        "Maddeler ve başlıklar kullanma; her şeyi akıcı bir konuşma gibi yaz. " +
+                                        "Cevabın 3-4 cümleyi geçmesin, sesli dinlemeye uygun olsun."
                             )
                         )
                     ),
@@ -294,7 +301,7 @@ class VoiceAssistantRepositoryImpl(
                 "Bulunduğunuz bölgede hava durumu hakkında güncel bilgi almak için lütfen konumunuzu kontrol edin. Genel olarak ılık ve güzel bir gün görünüyor!"
             }
             lower.contains("nedir") || lower.contains("nasıl") || lower.contains("açıkla") || lower.contains("bilgi") -> {
-                "Sorduğunuz konu oldukça ilgi çekici! $prompt hakkında temel olarak şunları söyleyebilirim: Konunun özünde sistematik bir yaklaşım ve doğru analiz yatmaktadır. Daha derin bir inceleme için spesifik detayları konuşabiliriz."
+                "Hmm, bu güzel bir soru aslında. $prompt konusuna bakacak olursak, bence en önemli nokta şu: pratik adımlarla başlamak her zaman daha iyi sonuç veriyor.Ne tarafından başlamak istersin?"
             }
             lower.contains("teşekkür") || lower.contains("sağol") -> {
                 "Rica ederim! Her zaman yardıma hazırım. Başka bir sorunuz veya konuşmak istediğiniz bir konu olursa dinliyorum."
