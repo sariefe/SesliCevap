@@ -1,0 +1,6 @@
+{
+  "name": "Sesli Cevap",
+  "description": "Kullanıcı konuştuktan sonra yapay zeka ile anlık sesli ve metin analizi yapan, konuşmaları Room veritabanında saklayıp geçmişe dönük analiz sunan akıllı sesli asistan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
