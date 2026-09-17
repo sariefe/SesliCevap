@@ -21,6 +21,7 @@ import com.example.domain.model.SentimentStat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -83,7 +84,7 @@ class VoiceAssistantRepositoryImpl(
             val userCategory = classifyCategory(prompt)
             val userSentiment = analyzeSentiment(prompt)
 
-            // 1. Save User message to Room
+            // 1. Kullanıcı mesajını kaydet
             val userMessageEntity = MessageEntity(
                 conversationId = conversationId,
                 sender = MessageSender.USER.name,
@@ -94,11 +95,16 @@ class VoiceAssistantRepositoryImpl(
                 audioDurationMs = speechDurationMs
             )
             messageDao.insertMessage(userMessageEntity)
-            Timber.i("Saved user message to DB: %s (Category: %s, Sentiment: %s)", prompt.take(30), userCategory, userSentiment)
+            Timber.i(
+                "Saved user message to DB: %s (Category: %s, Sentiment: %s)",
+                prompt.take(30), userCategory, userSentiment
+            )
 
-            // Update conversation title if first message
+            // Konuşma başlığını güncelle (ilk mesajsa)
             val currentConv = conversationDao.getConversationByIdOnce(conversationId)
-            if (currentConv != null && (currentConv.messageCount == 0 || currentConv.title.startsWith("Yeni Sesli"))) {
+            if (currentConv != null &&
+                (currentConv.messageCount == 0 || currentConv.title.startsWith("Yeni Sesli"))
+            ) {
                 val newTitle = if (prompt.length > 32) "${prompt.take(30)}..." else prompt
                 conversationDao.updateConversation(
                     currentConv.copy(
@@ -118,11 +124,17 @@ class VoiceAssistantRepositoryImpl(
                 )
             }
 
-            // 2. Fetch AI Response
-            val aiResponseText = fetchAiAnswer(prompt)
+            // 2. Bu konuşmanın tüm geçmişini çek — Gemini'ye bağlam olarak gönderilecek
+            val conversationHistory = messageDao
+                .getMessagesForConversation(conversationId)
+                .first()
+                .takeLast(10) // Son 10 mesaj yeterli, token limitini aşmamak için
+
+            // 3. Yapay zekadan cevap al (geçmişle birlikte)
+            val aiResponseText = fetchAiAnswer(prompt, conversationHistory)
             val aiSentiment = analyzeSentiment(aiResponseText)
 
-            // 3. Save AI message to Room
+            // 4. Yapay zeka mesajını kaydet
             val aiMessageEntity = MessageEntity(
                 conversationId = conversationId,
                 sender = MessageSender.AI.name,
@@ -134,7 +146,7 @@ class VoiceAssistantRepositoryImpl(
             val aiMsgId = messageDao.insertMessage(aiMessageEntity)
             Timber.i("Saved AI message to DB: id %d", aiMsgId)
 
-            // Save paired user prompt, AI response, and timestamp in ConversationHistoryEntity
+            // Konuşma geçmişine kaydet
             conversationHistoryDao?.insertHistory(
                 ConversationHistoryEntity(
                     conversationId = conversationId,
@@ -144,7 +156,7 @@ class VoiceAssistantRepositoryImpl(
                 )
             )
 
-            // Update conversation stats
+            // Konuşma istatistiklerini güncelle
             val updatedConv = conversationDao.getConversationByIdOnce(conversationId)
             if (updatedConv != null) {
                 conversationDao.updateConversation(
@@ -193,26 +205,18 @@ class VoiceAssistantRepositoryImpl(
             val userMessages = messages.filter { it.sender == MessageSender.USER.name }
             val totalUserQueries = userMessages.size
 
-            // Sentiment distribution
             val sentimentGroups = messages.groupBy { it.sentiment }
             val sentimentStats = sentimentGroups.map { (sentiment, list) ->
-                val percentage = if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
-                SentimentStat(
-                    sentiment = sentiment,
-                    count = list.size,
-                    percentage = percentage
-                )
+                val percentage =
+                    if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
+                SentimentStat(sentiment = sentiment, count = list.size, percentage = percentage)
             }.sortedByDescending { it.count }
 
-            // Category distribution
             val categoryGroups = messages.groupBy { it.category }
             val categoryStats = categoryGroups.map { (category, list) ->
-                val percentage = if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
-                CategoryStat(
-                    category = category,
-                    count = list.size,
-                    percentage = percentage
-                )
+                val percentage =
+                    if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
+                CategoryStat(category = category, count = list.size, percentage = percentage)
             }.sortedByDescending { it.count }
 
             val dominantCategory = categoryStats.firstOrNull()?.category ?: "Genel"
@@ -224,114 +228,206 @@ class VoiceAssistantRepositoryImpl(
                 totalUserQueries = totalUserQueries,
                 mostUsedCategory = dominantCategory,
                 mostUsedSentiment = dominantSentiment,
+                dominantCategory = dominantCategory,
+                dominantSentiment = dominantSentiment,
                 sentimentDistribution = sentimentStats,
                 categoryDistribution = categoryStats,
-                recentSessions = conversations.take(5).map { it.toDomain() },
+                recentSessions = conversations.take(5).map { it.toDomain() }
             )
         }
     }
 
-    private suspend fun fetchAiAnswer(prompt: String): String {
+    // -------------------------------------------------------------------------
+    // Gemini API
+    // -------------------------------------------------------------------------
+
+    private suspend fun fetchAiAnswer(
+        prompt: String,
+        history: List<MessageEntity> = emptyList()
+    ): String {
         val apiKey = BuildConfig.GEMINI_API_KEY
         val hasValidApiKey = apiKey.isNotBlank()
 
+        Timber.d("API key present: %b", hasValidApiKey)
+
         if (hasValidApiKey) {
             try {
+                // Geçmiş mesajları Gemini formatına çevir
+                val historyContents = history.map { msg ->
+                    Content(
+                        role = if (msg.sender == MessageSender.USER.name) "user" else "model",
+                        parts = listOf(Part(text = msg.text))
+                    )
+                }
+
+                // Son kullanıcı mesajını da ekle
+                val allContents = historyContents + Content(
+                    role = "user",
+                    parts = listOf(Part(text = prompt))
+                )
+
                 val request = GeminiRequest(
-                    contents = listOf(
-                        Content(
-                            parts = listOf(Part(text = prompt)),
-                            role = "user"
-                        )
-                    ),
+                    contents = allContents,
                     systemInstruction = Content(
                         parts = listOf(
                             Part(
-                                text = "Sen samimi, sıcak ve anlayışlı bir Türkçe sesli asistansın. " +
-                                        "Konuşma diline çok yakın yaz — kısa cümleler kur, 'yani', 'aslında', 'şöyle düşün' gibi " +
-                                        "günlük bağlaçlar kullan. Robotik veya resmi bir dil kullanma. " +
-                                        "Kullanıcının duygusunu yakala: mutluysa sevinç paylaş, " +
-                                        "merak ediyorsa heyecanla anlat, üzgünse empati kur. " +
-                                        "Gerektiğinde 'Hmm', 'Şöyle söyleyeyim', 'Aslında bakacak olursak' gibi " +
-                                        "düşünce geçişleri ekle — bu sesi daha doğal kılar. " +
-                                        "Maddeler ve başlıklar kullanma; her şeyi akıcı bir konuşma gibi yaz. " +
-                                        "Cevabın 3-4 cümleyi geçmesin, sesli dinlemeye uygun olsun."
+                                text = """
+                                    Sen samimi, sıcak ve anlayışlı bir Türkçe sesli asistansın.
+                                    Konuşma diline çok yakın yaz — kısa cümleler kur, "yani", "aslında", 
+                                    "şöyle düşün" gibi günlük bağlaçlar kullan.
+                                    Robotik veya resmi bir dil kullanma.
+                                    Kullanıcının duygusunu yakala: mutluysa sevinç paylaş,
+                                    merak ediyorsa heyecanla anlat, üzgünse empati kur.
+                                    Gerektiğinde "Hmm", "Şöyle söyleyeyim", "Aslında bakacak olursak" gibi
+                                    düşünce geçişleri ekle — bu sesi daha doğal kılar.
+                                    Maddeler ve başlıklar kullanma; her şeyi akıcı bir konuşma gibi yaz.
+                                    Cevabın 3-4 cümleyi geçmesin, sesli dinlemeye uygun olsun.
+                                    Önceki konuşmayı hatırlıyorsun ve bağlamı sürdürüyorsun.
+                                """.trimIndent()
                             )
                         )
                     ),
                     generationConfig = GenerationConfig(
-                        temperature = 0.7f,
+                        temperature = 0.9f,
                         topP = 0.95f,
-                        maxOutputTokens = 800
+                        maxOutputTokens = 400
                     )
                 )
+
                 val response = geminiApiService.generateContent(apiKey, request)
-                val candidateText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+
+                // API hata döndürdüyse Türkçe mesaj göster
+                response.error?.let { err ->
+                    val turkishError = translateApiError(err.code)
+                    Timber.w("Gemini API error %d: %s", err.code, err.message)
+                    return turkishError
+                }
+
+                val candidateText = response.candidates
+                    ?.firstOrNull()
+                    ?.content
+                    ?.parts
+                    ?.firstOrNull()
+                    ?.text
+
                 if (!candidateText.isNullOrBlank()) {
                     return candidateText.trim()
                 }
             } catch (e: Exception) {
-                Timber.w(e, "Gemini API call failed, falling back to smart local response engine")
+                val turkishError = translateException(e)
+                Timber.w(e, "Gemini API call failed: %s", e.localizedMessage)
+                return turkishError
             }
         }
 
-        // Smart local assistant fallback if API key is not yet configured or network unreachable
         return generateIntelligentFallback(prompt)
     }
+
+    // -------------------------------------------------------------------------
+    // Hata mesajlarını Türkçeleştir
+    // -------------------------------------------------------------------------
+
+    private fun translateApiError(code: Int?): String {
+        return when (code) {
+            400 -> "Geçersiz istek gönderildi. Lütfen tekrar deneyin."
+            401, 403 -> "API anahtarı geçersiz veya yetkisiz erişim. Ayarları kontrol edin."
+            429 -> "Çok fazla istek gönderildi. Biraz bekleyip tekrar deneyin."
+            500, 503 -> "Yapay zeka sunucusunda geçici bir sorun var. Kısa süre sonra tekrar deneyin."
+            else -> "Yapay zeka şu an yanıt veremiyor (Hata: $code). Lütfen tekrar deneyin."
+        }
+    }
+
+    private fun translateException(e: Exception): String {
+        val message = e.localizedMessage?.lowercase() ?: ""
+        return when {
+            message.contains("unable to resolve host") ||
+                    message.contains("failed to connect") ||
+                    message.contains("network") -> "İnternet bağlantısı bulunamadı. Bağlantınızı kontrol edin."
+            message.contains("timeout") ||
+                    message.contains("timed out") -> "Bağlantı zaman aşımına uğradı. Tekrar deneyin."
+            message.contains("ssl") ||
+                    message.contains("certificate") -> "Güvenli bağlantı kurulamadı. Tekrar deneyin."
+            else -> "Yapay zeka şu an yanıt veremiyor. Lütfen tekrar deneyin."
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Yerel yedek cevaplar (API yokken)
+    // -------------------------------------------------------------------------
 
     private fun generateIntelligentFallback(prompt: String): String {
         val lower = prompt.lowercase().trim()
         return when {
-            lower.contains("merhaba") || lower.contains("selam") || lower.contains("günaydın") -> {
-                "Merhaba! Sesli asistanınıza hoş geldiniz. Size nasıl yardımcı olabilirim? Merak ettiğiniz bir konuyu sorabilir veya fikir danışabilirsiniz."
-            }
-            lower.contains("nasılsın") || lower.contains("ne haber") -> {
-                "Harikayım, teşekkür ederim! Sizinle konuşmak çok güzel. Bugün hangi konuda birlikte çalışmak veya sohbet etmek istersiniz?"
-            }
-            lower.contains("kimsin") || lower.contains("sen kimsin") || lower.contains("nesin") -> {
-                "Ben sesli ve yazılı olarak size anında yanıt verebilen, konuşmalarınızı analiz edip geçmişe dönük özetleyen akıllı yapay zeka asistanınızım."
-            }
+            lower.contains("merhaba") || lower.contains("selam") ||
+                    lower.contains("günaydın") ->
+                "Merhaba! Seninle konuşmak çok güzel. Bugün sana nasıl yardımcı olabilirim?"
+
+            lower.contains("nasılsın") || lower.contains("ne haber") ->
+                "İyiyim, teşekkürler! Seninle sohbet etmek her zaman keyifli. Sen nasılsın, bugün nasıl geçiyor?"
+
+            lower.contains("kimsin") || lower.contains("sen kimsin") ||
+                    lower.contains("nesin") ->
+                "Ben sesli konuşmalarını dinleyen ve sana anında yanıt veren bir yapay zeka asistanınım. Sorularını yanıtlamak, fikir üretmek veya sadece sohbet etmek için buradayım."
+
             lower.contains("saat") || lower.contains("tarih") -> {
-                val now = SimpleDateFormat("HH:mm, dd MMMM yyyy", Locale.forLanguageTag("tr-TR")).format(
-                    Date()
-                )
-                "Şu anki zaman: $now."
+                val now = SimpleDateFormat(
+                    "HH:mm, dd MMMM yyyy",
+                    Locale.forLanguageTag("tr-TR")
+                ).format(Date())
+                "Şu an saat $now."
             }
-            lower.contains("hava") -> {
-                "Bulunduğunuz bölgede hava durumu hakkında güncel bilgi almak için lütfen konumunuzu kontrol edin. Genel olarak ılık ve güzel bir gün görünüyor!"
-            }
-            lower.contains("nedir") || lower.contains("nasıl") || lower.contains("açıkla") || lower.contains("bilgi") -> {
-                "Hmm, bu güzel bir soru aslında. $prompt konusuna bakacak olursak, bence en önemli nokta şu: pratik adımlarla başlamak her zaman daha iyi sonuç veriyor.Ne tarafından başlamak istersin?"
-            }
-            lower.contains("teşekkür") || lower.contains("sağol") -> {
-                "Rica ederim! Her zaman yardıma hazırım. Başka bir sorunuz veya konuşmak istediğiniz bir konu olursa dinliyorum."
-            }
-            lower.contains("görüşürüz") || lower.contains("hoşçakal") || lower.contains("bay bay") -> {
-                "Görüşmek üzere! Kendinize çok iyi bakın, dilediğiniz an tekrar konuşabiliriz."
-            }
-            else -> {
-                "\"$prompt\" ifadenizi dikkatle analiz ettim. Düşünceniz oldukça değerli. Bu doğrultuda adımlarınızı planlayabilir, gerektiğinde daha detaylı analiz yapabiliriz. Size bu konuda nasıl yardımcı olmamı istersiniz?"
-            }
+
+            lower.contains("hava") ->
+                "Hava durumu için güncel konumuna ihtiyacım var, ama genel olarak söyleyeyim: dışarı çıkmadan önce bir telefona bakmak her zaman iyi fikir!"
+
+            lower.contains("teşekkür") || lower.contains("sağol") ->
+                "Ne demek, her zaman! Başka bir şey sormak istersen buradayım."
+
+            lower.contains("görüşürüz") || lower.contains("hoşçakal") ||
+                    lower.contains("bay bay") ->
+                "Görüşmek üzere! İyi günler dilerim, istediğin zaman tekrar konuşabiliriz."
+
+            else ->
+                "Hmm, ilginç bir konu bu. Aslında $prompt hakkında düşününce, pratik adımlarla başlamak her zaman en iyisi. Bu konuda sana daha iyi yardımcı olabilmem için biraz daha anlatır mısın?"
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Sınıflandırma & duygu analizi
+    // -------------------------------------------------------------------------
 
     private fun classifyCategory(text: String): String {
         val lower = text.lowercase()
         return when {
-            lower.contains("kod") || lower.contains("yazılım") || lower.contains("fonksiyon") ||
-                    lower.contains("android") || lower.contains("kotlin") || lower.contains("api") ||
-                    lower.contains("bilgisayar") || lower.contains("yapay zeka") -> "Teknoloji & Yazılım"
-            lower.contains("nedir") || lower.contains("nasıl") || lower.contains("öğren") ||
-                    lower.contains("tarih") || lower.contains("fizik") || lower.contains("neden") ||
-                    lower.contains("kitap") || lower.contains("bilim") -> "Bilgi & Öğrenme"
-            lower.contains("hedef") || lower.contains("plan") || lower.contains("görev") ||
-                    lower.contains("yapılacak") || lower.contains("iş") || lower.contains("zaman") ||
-                    lower.contains("üretkenlik") || lower.contains("not") -> "Üretkenlik & Planlama"
-            lower.contains("sağlık") || lower.contains("spor") || lower.contains("diyet") ||
-                    lower.contains("su") || lower.contains("egzersiz") || lower.contains("uyku") ||
-                    lower.contains("doktor") || lower.contains("beslenme") -> "Sağlık & Yaşam"
-            lower.contains("merhaba") || lower.contains("selam") || lower.contains("nasılsın") ||
-                    lower.contains("günaydın") || lower.contains("iyi akşamlar") || lower.contains("sohbet") -> "Günlük Sohbet"
+            lower.contains("kod") || lower.contains("yazılım") ||
+                    lower.contains("fonksiyon") || lower.contains("android") ||
+                    lower.contains("kotlin") || lower.contains("api") ||
+                    lower.contains("bilgisayar") || lower.contains("yapay zeka") ->
+                "Teknoloji & Yazılım"
+
+            lower.contains("nedir") || lower.contains("nasıl") ||
+                    lower.contains("öğren") || lower.contains("tarih") ||
+                    lower.contains("fizik") || lower.contains("neden") ||
+                    lower.contains("kitap") || lower.contains("bilim") ->
+                "Bilgi & Öğrenme"
+
+            lower.contains("hedef") || lower.contains("plan") ||
+                    lower.contains("görev") || lower.contains("yapılacak") ||
+                    lower.contains("iş") || lower.contains("zaman") ||
+                    lower.contains("üretkenlik") || lower.contains("not") ->
+                "Üretkenlik & Planlama"
+
+            lower.contains("sağlık") || lower.contains("spor") ||
+                    lower.contains("diyet") || lower.contains("su") ||
+                    lower.contains("egzersiz") || lower.contains("uyku") ||
+                    lower.contains("doktor") || lower.contains("beslenme") ->
+                "Sağlık & Yaşam"
+
+            lower.contains("merhaba") || lower.contains("selam") ||
+                    lower.contains("nasılsın") || lower.contains("günaydın") ||
+                    lower.contains("iyi akşamlar") || lower.contains("sohbet") ->
+                "Günlük Sohbet"
+
             else -> "Genel"
         }
     }
@@ -339,18 +435,31 @@ class VoiceAssistantRepositoryImpl(
     private fun analyzeSentiment(text: String): String {
         val lower = text.lowercase()
         return when {
-            lower.contains("harika") || lower.contains("süper") || lower.contains("güzel") ||
-                    lower.contains("teşekkür") || lower.contains("mutlu") || lower.contains("başardım") ||
-                    lower.contains("sevindim") || lower.contains("iyi") || lower.contains("mükemmel") -> "Olumlu"
-            lower.contains("nedir") || lower.contains("nasıl") || lower.contains("merak") ||
-                    lower.contains("acaba") || lower.contains("kim") || lower.contains("neden") -> "Meraklı"
-            lower.contains("düşün") || lower.contains("mantık") || lower.contains("fikir") ||
-                    lower.contains("analiz") || lower.contains("strateji") || lower.contains("önemli") -> "Düşünceli"
-            lower.contains("kötü") || lower.contains("zor") || lower.contains("endişe") ||
-                    lower.contains("stres") || lower.contains("hata") || lower.contains("problem") -> "Endişeli"
+            lower.contains("harika") || lower.contains("süper") ||
+                    lower.contains("güzel") || lower.contains("teşekkür") ||
+                    lower.contains("mutlu") || lower.contains("başardım") ||
+                    lower.contains("sevindim") || lower.contains("iyi") ||
+                    lower.contains("mükemmel") -> "Olumlu"
+
+            lower.contains("nedir") || lower.contains("nasıl") ||
+                    lower.contains("merak") || lower.contains("acaba") ||
+                    lower.contains("kim") || lower.contains("neden") -> "Meraklı"
+
+            lower.contains("düşün") || lower.contains("mantık") ||
+                    lower.contains("fikir") || lower.contains("analiz") ||
+                    lower.contains("strateji") || lower.contains("önemli") -> "Düşünceli"
+
+            lower.contains("kötü") || lower.contains("zor") ||
+                    lower.contains("endişe") || lower.contains("stres") ||
+                    lower.contains("hata") || lower.contains("problem") -> "Endişeli"
+
             else -> "Nötr"
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Entity → Domain dönüşümleri
+    // -------------------------------------------------------------------------
 
     private fun ConversationEntity.toDomain() = ConversationSession(
         id = id,
