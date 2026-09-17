@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -35,7 +36,7 @@ fun VoiceMicButton(
     isSpeaking: Boolean,
     isProcessing: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "mic_pulse")
 
@@ -44,9 +45,9 @@ fun VoiceMicButton(
         targetValue = 1.28f,
         animationSpec = infiniteRepeatable(
             animation = tween(900, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "pulse_scale"
+        label = "pulse_scale",
     )
 
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -54,9 +55,9 @@ fun VoiceMicButton(
         targetValue = 0.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(900, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "pulse_alpha"
+        label = "pulse_alpha",
     )
 
     val activeColor by animateColorAsState(
@@ -66,12 +67,12 @@ fun VoiceMicButton(
             isProcessing -> MaterialTheme.colorScheme.secondary
             else -> MaterialTheme.colorScheme.primary
         },
-        label = "button_color"
+        label = "button_color",
     )
 
     Box(
         modifier = modifier.size(88.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         // Outer pulsing ring when listening or speaking
         if (isListening || isSpeaking) {
@@ -80,7 +81,7 @@ fun VoiceMicButton(
                     .size(76.dp)
                     .scale(pulseScale)
                     .clip(CircleShape)
-                    .background(activeColor.copy(alpha = pulseAlpha))
+                    .background(activeColor.copy(alpha = pulseAlpha)),
             )
         }
 
@@ -91,32 +92,45 @@ fun VoiceMicButton(
                 .testTag("voice_mic_button"),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = activeColor,
-                contentColor = Color.White
-            )
+                contentColor = Color.White,
+            ),
         ) {
             when {
                 isListening -> {
                     Icon(
                         imageVector = Icons.Default.Stop,
                         contentDescription = "Dinlemeyi Durdur",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     )
                 }
                 isSpeaking -> {
                     Icon(
                         imageVector = Icons.Default.GraphicEq,
                         contentDescription = "Seslendirmeyi Durdur",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     )
                 }
                 else -> {
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Konuşmaya Başla",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     )
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VoiceMicButtonPreview() {
+    MaterialTheme {
+        VoiceMicButton(
+            isListening = false,
+            isSpeaking = false,
+            isProcessing = false,
+            onClick = {},
+        )
     }
 }

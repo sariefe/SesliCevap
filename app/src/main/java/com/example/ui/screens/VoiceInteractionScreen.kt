@@ -1,8 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,11 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -43,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -194,13 +186,13 @@ fun VoiceInteractionScreen(
                     ) {
                         val currentText = when {
                             uiState.speechState is SpeechState.Listening -> {
-                                val partial = (uiState.speechState as SpeechState.Listening).partialText
+                                val partial = uiState.speechState.partialText
                                 if (partial.isNotBlank()) "\"$partial\"" else "Sizi dinliyorum, lütfen konuşun..."
                             }
                             isProcessing -> "Söyledikleriniz analiz ediliyor..."
                             isSpeaking -> {
-                                val speakingText = (uiState.ttsState as? TtsState.Speaking)?.text
-                                speakingText ?: "Yapay zeka sesli yanıt veriyor..."
+                                val speakingText = uiState.ttsState.text
+                                speakingText
                             }
                             uiState.messages.isNotEmpty() -> {
                                 val lastMsg = uiState.messages.last()

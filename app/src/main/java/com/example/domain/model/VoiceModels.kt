@@ -35,7 +35,9 @@ data class AnalyticsSummary(
     val dominantSentiment: String = "Nötr",
     val sentimentDistribution: List<SentimentStat> = emptyList(),
     val categoryDistribution: List<CategoryStat> = emptyList(),
-    val recentSessions: List<ConversationSession> = emptyList()
+    val recentSessions: List<ConversationSession> = emptyList(),
+    val mostUsedSentiment: String,
+    val mostUsedCategory: String
 )
 
 data class SentimentStat(

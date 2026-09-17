@@ -224,7 +224,7 @@ class VoiceAssistantRepositoryImpl(
                 dominantSentiment = dominantSentiment,
                 sentimentDistribution = sentimentStats,
                 categoryDistribution = categoryStats,
-                recentSessions = conversations.take(5).map { it.toDomain() }
+                recentSessions = conversations.take(5).map { it.toDomain() },
             )
         }
     }

@@ -1,15 +1,12 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,11 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccessTime
@@ -33,20 +28,15 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mood
-import androidx.compose.material.icons.filled.North
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.South
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -92,7 +82,9 @@ import kotlinx.coroutines.flow.Flow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import androidx.compose.foundation.lazy.items
 import java.util.Locale
+
 
 /**
  * Tarih filtreleme seçenekleri
@@ -124,7 +116,7 @@ fun HistoryScreen(
     onClearAllHistory: () -> Unit,
     onPlayAudio: ((String) -> Unit)? = null,
     getMessagesForConversation: (Long) -> Flow<List<ChatMessage>>,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedDateFilter by rememberSaveable { mutableStateOf(DateFilterOption.ALL) }
@@ -141,9 +133,6 @@ fun HistoryScreen(
     // Benzersiz kategoriler ve duygular
     val categories = remember(conversations) {
         conversations.map { it.dominantCategory }.filter { it.isNotBlank() }.distinct()
-    }
-    val sentiments = remember(conversations) {
-        conversations.map { it.dominantSentiment }.filter { it.isNotBlank() }.distinct()
     }
 
     // Filtrelenmiş ve sıralanmış konuşmalar
@@ -168,7 +157,6 @@ fun HistoryScreen(
 
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         val yesterdayStart = calendar.timeInMillis
-        val yesterdayEnd = todayStart
 
         val sevenDaysAgo = now - 7L * 24 * 60 * 60 * 1000
         val thirtyDaysAgo = now - 30L * 24 * 60 * 60 * 1000
@@ -188,7 +176,7 @@ fun HistoryScreen(
             val matchesDate = when (selectedDateFilter) {
                 DateFilterOption.ALL -> true
                 DateFilterOption.TODAY -> conv.lastUpdated >= todayStart
-                DateFilterOption.YESTERDAY -> conv.lastUpdated in yesterdayStart until yesterdayEnd
+                DateFilterOption.YESTERDAY -> conv.lastUpdated in yesterdayStart until todayStart
                 DateFilterOption.LAST_7_DAYS -> conv.lastUpdated >= sevenDaysAgo
                 DateFilterOption.LAST_30_DAYS -> conv.lastUpdated >= thirtyDaysAgo
             }
@@ -329,7 +317,7 @@ fun HistoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            items(DateFilterOption.values()) { option ->
+                            items(DateFilterOption.entries.toTypedArray()) { option ->
                                 FilterChip(
                                     selected = selectedDateFilter == option,
                                     onClick = { selectedDateFilter = option },
@@ -404,7 +392,7 @@ fun HistoryScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            items(HistorySortOption.values()) { sortOpt ->
+                            items(HistorySortOption.entries.toTypedArray()) { sortOpt ->
                                 FilterChip(
                                     selected = selectedSortOption == sortOpt,
                                     onClick = { selectedSortOption = sortOpt },
@@ -528,7 +516,6 @@ fun HistoryScreen(
                 ) { conv ->
                     HistoryItemCard(
                         session = conv,
-                        searchHighlight = searchQuery,
                         onClick = { onSelectConversation(conv.id) },
                         onPreview = { previewConversation = conv },
                         onDelete = { conversationToDelete = conv }
@@ -636,7 +623,6 @@ fun HistoryScreen(
 @Composable
 private fun HistoryItemCard(
     session: ConversationSession,
-    searchHighlight: String,
     onClick: () -> Unit,
     onPreview: () -> Unit,
     onDelete: () -> Unit,

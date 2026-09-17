@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,11 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
@@ -63,6 +60,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.AnalyticsSummary
@@ -74,6 +72,35 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@Preview(showBackground = true)
+@Composable
+fun AnalyticsScreenPreview() {
+    // Mock analytics data for preview
+    val mockAnalytics = AnalyticsSummary(
+        totalConversations = 15,
+        totalMessages = 200,
+        mostUsedCategory = "Genel",
+        mostUsedSentiment = "Olumlu"
+    )
+    val mockConversations = listOf(
+        ConversationSession(
+            id = 1L,
+            title = "Test Session",
+            createdAt = System.currentTimeMillis(),
+            lastUpdated = System.currentTimeMillis() - 86400000,
+            messageCount = 5,
+            dominantCategory = "Genel",
+            dominantSentiment = "Olumlu"
+        )
+    )
+    AnalyticsScreen(
+        analytics = mockAnalytics,
+        conversations = mockConversations,
+        onSelectConversation = {},
+        onDeleteConversation = {},
+        onClearAllHistory = {}
+    )
+}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyticsScreen(
@@ -106,7 +133,6 @@ fun AnalyticsScreen(
 
         calendar.add(Calendar.DAY_OF_YEAR, -1)
         val yesterdayStart = calendar.timeInMillis
-        val yesterdayEnd = todayStart
 
         val sevenDaysAgo = now - 7L * 24 * 60 * 60 * 1000
         val thirtyDaysAgo = now - 30L * 24 * 60 * 60 * 1000
@@ -124,7 +150,7 @@ fun AnalyticsScreen(
             val matchesDate = when (selectedDateFilter) {
                 DateFilterOption.ALL -> true
                 DateFilterOption.TODAY -> conv.lastUpdated >= todayStart
-                DateFilterOption.YESTERDAY -> conv.lastUpdated in yesterdayStart until yesterdayEnd
+                DateFilterOption.YESTERDAY -> conv.lastUpdated in yesterdayStart until todayStart
                 DateFilterOption.LAST_7_DAYS -> conv.lastUpdated >= sevenDaysAgo
                 DateFilterOption.LAST_30_DAYS -> conv.lastUpdated >= thirtyDaysAgo
             }
@@ -394,7 +420,7 @@ fun AnalyticsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(DateFilterOption.values()) { opt ->
+                        items(DateFilterOption.entries.toTypedArray()) { opt ->
                             FilterChip(
                                 selected = selectedDateFilter == opt,
                                 onClick = { selectedDateFilter = opt },

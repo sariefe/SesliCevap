@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -44,7 +45,7 @@ fun PulsingMicOrb(
     rmsDb: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    orbSize: Dp = 96.dp
+    orbSize: Dp = 96.dp,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "orb_pulse_motion")
 
@@ -54,18 +55,18 @@ fun PulsingMicOrb(
         targetValue = 1.8f,
         animationSpec = infiniteRepeatable(
             animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave1_scale"
+        label = "wave1_scale",
     )
     val wave1Alpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave1_alpha"
+        label = "wave1_alpha",
     )
 
     // Dalga 2: Gecikmeli dış halka nabzı
@@ -74,18 +75,18 @@ fun PulsingMicOrb(
         targetValue = 2.4f,
         animationSpec = infiniteRepeatable(
             animation = tween(2100, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave2_scale"
+        label = "wave2_scale",
     )
     val wave2Alpha by infiniteTransition.animateFloat(
         initialValue = 0.45f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(2100, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave2_alpha"
+        label = "wave2_alpha",
     )
 
     // Dalga 3: Çok daha geniş ve yumuşak aura
@@ -94,18 +95,18 @@ fun PulsingMicOrb(
         targetValue = 3.0f,
         animationSpec = infiniteRepeatable(
             animation = tween(2800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave3_scale"
+        label = "wave3_scale",
     )
     val wave3Alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(2800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "wave3_alpha"
+        label = "wave3_alpha",
     )
 
     // Çekirdek nefes alma (breathing core)
@@ -114,9 +115,9 @@ fun PulsingMicOrb(
         targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "core_breathing"
+        label = "core_breathing",
     )
 
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -135,7 +136,7 @@ fun PulsingMicOrb(
 
     Box(
         modifier = modifier.size(orbSize * 2.2f),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         // Çok katmanlı dışa yayılan pulsing dalgalar (yalnızca aktif dinleme veya konuşmada)
         if (isListening || isSpeaking) {
@@ -145,7 +146,7 @@ fun PulsingMicOrb(
                     .size(orbSize)
                     .scale(wave3Scale + dynamicVoiceBoost)
                     .clip(CircleShape)
-                    .background(activeColor.copy(alpha = wave3Alpha))
+                    .background(activeColor.copy(alpha = wave3Alpha)),
             )
 
             // Orta Katman 2
@@ -158,19 +159,19 @@ fun PulsingMicOrb(
                         Brush.radialGradient(
                             colors = listOf(
                                 activeColor.copy(alpha = wave2Alpha),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
             )
 
             // İç Katman 1
             Box(
                 modifier = Modifier
                     .size(orbSize)
-                    .scale(wave1Scale + dynamicVoiceBoost * 0.5f)
+                    .scale(wave1Scale + (dynamicVoiceBoost * 0.5f))
                     .clip(CircleShape)
-                    .border(2.dp, activeColor.copy(alpha = wave1Alpha), CircleShape)
+                    .border(2.dp, activeColor.copy(alpha = wave1Alpha), CircleShape),
             )
         }
 
@@ -186,32 +187,46 @@ fun PulsingMicOrb(
                 .testTag("pulsing_voice_orb_button"),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = activeColor,
-                contentColor = Color.White
-            )
+                contentColor = Color.White,
+            ),
         ) {
             when {
                 isListening -> {
                     Icon(
                         imageVector = Icons.Default.Stop,
                         contentDescription = "Dinlemeyi Durdur",
-                        modifier = Modifier.size(orbSize * 0.42f)
+                        modifier = Modifier.size(orbSize * 0.42f),
                     )
                 }
                 isSpeaking -> {
                     Icon(
                         imageVector = Icons.Default.GraphicEq,
                         contentDescription = "Seslendirmeyi Durdur",
-                        modifier = Modifier.size(orbSize * 0.42f)
+                        modifier = Modifier.size(orbSize * 0.42f),
                     )
                 }
                 else -> {
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Konuşmaya Başla",
-                        modifier = Modifier.size(orbSize * 0.42f)
+                        modifier = Modifier.size(orbSize * 0.42f),
                     )
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PulsingMicOrbPreview() {
+    MaterialTheme {
+        PulsingMicOrb(
+            isListening = false,
+            isSpeaking = false,
+            isProcessing = false,
+            rmsDb = 0f,
+            onClick = {},
+        )
     }
 }

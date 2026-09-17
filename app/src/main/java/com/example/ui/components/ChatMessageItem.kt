@@ -23,8 +23,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.ChatMessage
@@ -46,7 +45,7 @@ fun ChatMessageItem(
     message: ChatMessage,
     isSpeakingThis: Boolean,
     onPlayAudio: (ChatMessage) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isUser = message.sender == MessageSender.USER
     val alignment = if (isUser) Alignment.End else Alignment.Start
@@ -74,12 +73,12 @@ fun ChatMessageItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalAlignment = alignment
+        horizontalAlignment = alignment,
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-            modifier = Modifier.fillMaxWidth(0.92f)
+            modifier = Modifier.fillMaxWidth(0.92f),
         ) {
             if (!isUser) {
                 // AI Avatar
@@ -88,13 +87,13 @@ fun ChatMessageItem(
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = "Yapay Zeka",
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -105,19 +104,19 @@ fun ChatMessageItem(
                 colors = CardDefaults.cardColors(containerColor = bubbleBg),
                 modifier = Modifier
                     .weight(1f, fill = false)
-                    .testTag("chat_bubble_${message.id}")
+                    .testTag("chat_bubble_${message.id}"),
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     // Header tag row (Category & Sentiment)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
                             text = if (isUser) "Siz" else "Sesli Asistan",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = textColor.copy(alpha = 0.8f)
+                            color = textColor.copy(alpha = 0.8f),
                         )
 
                         // Sentiment badge
@@ -125,29 +124,29 @@ fun ChatMessageItem(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
                             Text(
                                 text = message.sentiment,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = textColor.copy(alpha = 0.75f),
-                                fontSize = 10.sp
+                                fontSize = 10.sp,
                             )
                         }
 
                         // Category badge
-                        if (message.category.isNotBlank() && message.category != "Genel") {
+                        if ((message.category.isNotBlank()) && (message.category != "Genel")) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
                             ) {
                                 Text(
                                     text = message.category,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    fontSize = 10.sp
+                                    fontSize = 10.sp,
                                 )
                             }
                         }
@@ -160,7 +159,7 @@ fun ChatMessageItem(
                         text = message.text,
                         style = MaterialTheme.typography.bodyMedium,
                         color = textColor,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -169,13 +168,13 @@ fun ChatMessageItem(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             text = timeFormatted,
                             style = MaterialTheme.typography.labelSmall,
                             color = textColor.copy(alpha = 0.6f),
-                            fontSize = 10.sp
+                            fontSize = 10.sp,
                         )
 
                         // Play audio button for AI or User message
@@ -183,13 +182,13 @@ fun ChatMessageItem(
                             onClick = { onPlayAudio(message) },
                             modifier = Modifier
                                 .size(32.dp)
-                                .testTag("play_audio_btn_${message.id}")
+                                .testTag("play_audio_btn_${message.id}"),
                         ) {
                             Icon(
                                 imageVector = if (isSpeakingThis) Icons.Default.GraphicEq else Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Sesli Dinle",
                                 tint = if (isSpeakingThis) MaterialTheme.colorScheme.primary else textColor.copy(alpha = 0.7f),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                     }
@@ -204,16 +203,36 @@ fun ChatMessageItem(
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.tertiary),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Kullanıcı",
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ChatMessageItemPreview() {
+    MaterialTheme {
+        ChatMessageItem(
+            message = ChatMessage(
+                id = 1L,
+                conversationId = 1L,
+                text = "Merhaba, size nasıl yardımcı olabilirim?",
+                sender = MessageSender.AI,
+                timestamp = System.currentTimeMillis(),
+                sentiment = "Olumlu",
+                category = "Genel",
+            ),
+            isSpeakingThis = false,
+            onPlayAudio = {},
+        )
     }
 }

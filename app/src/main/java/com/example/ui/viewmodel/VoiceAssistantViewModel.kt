@@ -1,7 +1,6 @@
 package com.example.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.VoiceAssistantRepository
 import com.example.data.speech.SpeechRecognitionManager
@@ -291,16 +290,5 @@ class VoiceAssistantViewModel @Inject constructor(
         ttsManager.shutdown()
     }
 
-    companion object {
-        fun provideFactory(
-            repository: VoiceAssistantRepository,
-            speechManager: SpeechRecognitionManager,
-            ttsManager: TextToSpeechManager
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return VoiceAssistantViewModel(repository, speechManager, ttsManager) as T
-            }
-        }
-    }
+    companion object
 }

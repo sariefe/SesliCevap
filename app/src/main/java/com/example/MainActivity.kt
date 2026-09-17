@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +22,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.core.content.ContextCompat
+import com.example.domain.model.ChatMessage
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.VoiceAssistantScreen
@@ -42,6 +41,12 @@ import com.example.ui.screens.VoiceInteractionScreen
 import com.example.ui.screens.VoiceSettingsDialog
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.VoiceAssistantViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.Flow
+import com.example.domain.model.ConversationSession
+import com.example.domain.model.AnalyticsSummary
+import com.example.ui.viewmodel.VoiceUiState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -62,32 +67,74 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val conversations by viewModel.conversations.collectAsState()
+    val analytics by viewModel.analytics.collectAsState()
+
+    VoiceAppRootContent(
+        uiState = uiState,
+        conversations = conversations,
+        analytics = analytics,
+        onStartVoiceInput = { viewModel.startVoiceInput() },
+        onToggleVoiceListening = { viewModel.toggleVoiceListening() },
+        onToggleVoiceMode = { viewModel.toggleVoiceEnabled() },
+        onSendTextMessage = { viewModel.sendTextMessage(it) },
+        onPlayAudio = { viewModel.playAudio(it.text) },
+        onStopAudio = { viewModel.stopAudio() },
+        onSelectConversation = { viewModel.selectConversation(it) },
+        onNewConversation = { viewModel.createNewConversation() },
+        onDeleteConversation = { viewModel.deleteConversation(it) },
+        onClearAllHistory = { viewModel.clearAllHistory() },
+        getMessagesForConversation = { viewModel.getMessagesForConversation(it) },
+        onDismissError = { viewModel.dismissError() },
+        onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch ->
+            viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
+        },
+    ) { viewModel.playAudio(it, force = true) }
+}
+
+@Composable
+fun VoiceAppRootContent(
+    uiState: VoiceUiState,
+    conversations: List<ConversationSession>,
+    analytics: AnalyticsSummary,
+    onStartVoiceInput: () -> Unit,
+    onToggleVoiceListening: () -> Unit,
+    onToggleVoiceMode: () -> Unit,
+    onSendTextMessage: (String) -> Unit,
+    onPlayAudio: (ChatMessage) -> Unit,
+    onStopAudio: () -> Unit,
+    onSelectConversation: (Long) -> Unit,
+    onNewConversation: () -> Unit,
+    onDeleteConversation: (Long) -> Unit,
+    onClearAllHistory: () -> Unit,
+    getMessagesForConversation: (Long) -> Flow<List<ChatMessage>>,
+    onDismissError: () -> Unit,
+    onUpdateSettings: (Boolean, Boolean, Float, Float) -> Unit,
+    onPlayAudioText: (String) -> Unit
+) {
     val context = LocalContext.current
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var showVoiceInteractionScreen by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(value = false) }
+    var showVoiceInteractionScreen by remember { mutableStateOf(value = false) }
 
     var hasMicPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
+            value = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED,
         )
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
+        contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         hasMicPermission = isGranted
         if (isGranted) {
-            viewModel.startVoiceInput()
+            onStartVoiceInput()
         }
     }
-
-    val uiState by viewModel.uiState.collectAsState()
-    val conversations by viewModel.conversations.collectAsState()
-    val analytics by viewModel.analytics.collectAsState()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -102,11 +149,11 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                     icon = {
                         Icon(
                             imageVector = Icons.Default.RecordVoiceOver,
-                            contentDescription = "Sesli Asistan"
+                            contentDescription = "Sesli Asistan",
                         )
                     },
                     label = { Text("Sesli Asistan") },
-                    modifier = Modifier.testTag("nav_assistant_tab")
+                    modifier = Modifier.testTag("nav_assistant_tab"),
                 )
                 NavigationBarItem(
                     selected = currentTab == 1,
@@ -114,11 +161,11 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                     icon = {
                         Icon(
                             imageVector = Icons.Default.History,
-                            contentDescription = "Geçmiş"
+                            contentDescription = "Geçmiş",
                         )
                     },
                     label = { Text("Geçmiş") },
-                    modifier = Modifier.testTag("nav_history_tab")
+                    modifier = Modifier.testTag("nav_history_tab"),
                 )
                 NavigationBarItem(
                     selected = currentTab == 2,
@@ -126,14 +173,14 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Analytics,
-                            contentDescription = "Analiz"
+                            contentDescription = "Analiz",
                         )
                     },
                     label = { Text("Analiz") },
-                    modifier = Modifier.testTag("nav_analytics_tab")
+                    modifier = Modifier.testTag("nav_analytics_tab"),
                 )
             }
-        }
+        },
     ) { innerPadding ->
         when (currentTab) {
             0 -> {
@@ -144,17 +191,17 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                         if (!uiState.isVoiceEnabled) {
                             showSettingsDialog = true
                         } else if (hasMicPermission) {
-                            viewModel.toggleVoiceListening()
+                            onToggleVoiceListening()
                         } else {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onToggleVoiceMode = { viewModel.toggleVoiceEnabled() },
-                    onSendTextMessage = { viewModel.sendTextMessage(it) },
-                    onPlayAudio = { viewModel.playAudio(it.text) },
-                    onStopAudio = { viewModel.stopAudio() },
-                    onSelectConversation = { viewModel.selectConversation(it) },
-                    onNewConversation = { viewModel.createNewConversation() },
+                    onToggleVoiceMode = onToggleVoiceMode,
+                    onSendTextMessage = onSendTextMessage,
+                    onPlayAudio = onPlayAudio,
+                    onStopAudio = onStopAudio,
+                    onSelectConversation = onSelectConversation,
+                    onNewConversation = onNewConversation,
                     onOpenSettings = { showSettingsDialog = true },
                     onOpenVoiceInteraction = {
                         if (!uiState.isVoiceEnabled) {
@@ -162,32 +209,28 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                         } else if (hasMicPermission) {
                             showVoiceInteractionScreen = true
                             if (uiState.speechState !is com.example.data.speech.SpeechState.Listening) {
-                                viewModel.startVoiceInput()
+                                onStartVoiceInput()
                             }
                         } else {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onDismissError = { viewModel.dismissError() },
-                    modifier = Modifier.padding(innerPadding)
+                    onDismissError = onDismissError,
+                    modifier = Modifier.padding(innerPadding),
                 )
             }
             1 -> {
                 HistoryScreen(
                     conversations = conversations,
                     onSelectConversation = { convId ->
-                        viewModel.selectConversation(convId)
+                        onSelectConversation(convId)
                         currentTab = 0
                     },
-                    onDeleteConversation = { convId ->
-                        viewModel.deleteConversation(convId)
-                    },
-                    onClearAllHistory = { viewModel.clearAllHistory() },
-                    onPlayAudio = { viewModel.playAudio(it) },
-                    getMessagesForConversation = { convId ->
-                        viewModel.getMessagesForConversation(convId)
-                    },
-                    modifier = Modifier.padding(innerPadding)
+                    onDeleteConversation = onDeleteConversation,
+                    onClearAllHistory = onClearAllHistory,
+                    onPlayAudio = onPlayAudioText,
+                    getMessagesForConversation = getMessagesForConversation,
+                    modifier = Modifier.padding(innerPadding),
                 )
             }
             2 -> {
@@ -195,14 +238,12 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                     analytics = analytics,
                     conversations = conversations,
                     onSelectConversation = { convId ->
-                        viewModel.selectConversation(convId)
+                        onSelectConversation(convId)
                         currentTab = 0
                     },
-                    onDeleteConversation = { convId ->
-                        viewModel.deleteConversation(convId)
-                    },
-                    onClearAllHistory = { viewModel.clearAllHistory() },
-                    modifier = Modifier.padding(innerPadding)
+                    onDeleteConversation = onDeleteConversation,
+                    onClearAllHistory = onClearAllHistory,
+                    modifier = Modifier.padding(innerPadding),
                 )
             }
         }
@@ -215,13 +256,14 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
             initialSpeechRate = uiState.speechRate,
             initialSpeechPitch = uiState.speechPitch,
             onSave = { isVoiceEnabled, autoSpeak, rate, pitch ->
-                viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
+                onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
             },
-            onTestVoice = { rate, pitch ->
-                viewModel.playAudio("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.", force = true)
-            },
-            onDismiss = { showSettingsDialog = false }
-        )
+            onTestVoice = { _, _ ->
+                onPlayAudioText("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.")
+            }
+        ) {
+            showSettingsDialog = false
+        }
     }
 
     if (showVoiceInteractionScreen) {
@@ -229,17 +271,40 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
             uiState = uiState,
             onMicClick = {
                 if (hasMicPermission) {
-                    viewModel.toggleVoiceListening()
+                    onToggleVoiceListening()
                 } else {
                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             },
-            onStopAudio = { viewModel.stopAudio() },
+            onStopAudio = onStopAudio,
             onClose = { showVoiceInteractionScreen = false },
             onOpenSettings = { showSettingsDialog = true },
-            onSelectPrompt = { prompt ->
-                viewModel.sendTextMessage(prompt)
-            }
+            onSelectPrompt = onSendTextMessage,
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VoiceAppRootPreview() {
+    MyApplicationTheme {
+        VoiceAppRootContent(
+            uiState = VoiceUiState(),
+            conversations = emptyList(),
+            analytics = AnalyticsSummary(),
+            onStartVoiceInput = {},
+            onToggleVoiceListening = {},
+            onToggleVoiceMode = {},
+            onSendTextMessage = {},
+            onPlayAudio = {},
+            onStopAudio = {},
+            onSelectConversation = {},
+            onNewConversation = {},
+            onDeleteConversation = {},
+            onClearAllHistory = {},
+            getMessagesForConversation = { flowOf(emptyList()) },
+            onDismissError = {},
+            onUpdateSettings = { _, _, _, _ -> },
+        ) {}
     }
 }
