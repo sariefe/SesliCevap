@@ -291,7 +291,17 @@ fun VoiceAppRootPreview() {
         VoiceAppRootContent(
             uiState = VoiceUiState(),
             conversations = emptyList(),
-            analytics = AnalyticsSummary(),
+            analytics = AnalyticsSummary(
+                totalConversations = 0,
+                totalMessages = 0,
+                totalUserQueries = 0,
+                dominantSentiment = "—",
+                dominantCategory = "—",
+                mostUsedCategory = "",
+                mostUsedSentiment = "",
+                sentimentDistribution = emptyList(),
+                categoryDistribution = emptyList()
+            ),
             onStartVoiceInput = {},
             onToggleVoiceListening = {},
             onToggleVoiceMode = {},

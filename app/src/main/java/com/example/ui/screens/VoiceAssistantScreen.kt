@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
 import android.annotation.SuppressLint
-package com.example.ui.screens
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn

@@ -1,29 +1,18 @@
-# Build artifacts
-/out/
-build/
-/gradle/
-
-# Android
-*.apk
-*.aab
-
-# Dependencies and Cache
-.gradle/
-.idea/
-.externalToolchain/
-
-# Sensitive data
-# API Keys
-*.xml
-*.json
-
-# Local data and secrets
-.env
+*.iml
+.gradle
+.kotlin
 /local.properties
-*.key
-
-# Log files
-*.log
-
-# SDK and configuration
-/app/src/main/res/raw/config.xml
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.env
+debug.keystore
