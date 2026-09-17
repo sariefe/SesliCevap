@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class VoiceAssistantRepositoryImpl(
     private val conversationDao: ConversationDao,
@@ -117,7 +120,6 @@ class VoiceAssistantRepositoryImpl(
 
             // 2. Fetch AI Response
             val aiResponseText = fetchAiAnswer(prompt)
-            val aiCategory = userCategory
             val aiSentiment = analyzeSentiment(aiResponseText)
 
             // 3. Save AI message to Room
@@ -127,7 +129,7 @@ class VoiceAssistantRepositoryImpl(
                 text = aiResponseText,
                 timestamp = System.currentTimeMillis(),
                 sentiment = aiSentiment,
-                category = aiCategory
+                category = userCategory
             )
             val aiMsgId = messageDao.insertMessage(aiMessageEntity)
             Timber.i("Saved AI message to DB: id %d", aiMsgId)
@@ -149,7 +151,7 @@ class VoiceAssistantRepositoryImpl(
                     updatedConv.copy(
                         lastUpdated = System.currentTimeMillis(),
                         messageCount = updatedConv.messageCount + 1,
-                        dominantCategory = aiCategory,
+                        dominantCategory = userCategory,
                         dominantSentiment = aiSentiment
                     )
                 )
@@ -220,8 +222,8 @@ class VoiceAssistantRepositoryImpl(
                 totalConversations = totalConvs,
                 totalMessages = totalMsgs,
                 totalUserQueries = totalUserQueries,
-                dominantCategory = dominantCategory,
-                dominantSentiment = dominantSentiment,
+                mostUsedCategory = dominantCategory,
+                mostUsedSentiment = dominantSentiment,
                 sentimentDistribution = sentimentStats,
                 categoryDistribution = categoryStats,
                 recentSessions = conversations.take(5).map { it.toDomain() },
@@ -231,7 +233,7 @@ class VoiceAssistantRepositoryImpl(
 
     private suspend fun fetchAiAnswer(prompt: String): String {
         val apiKey = BuildConfig.GEMINI_API_KEY
-        val hasValidApiKey = apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY"
+        val hasValidApiKey = false
 
         if (hasValidApiKey) {
             try {
@@ -283,7 +285,9 @@ class VoiceAssistantRepositoryImpl(
                 "Ben sesli ve yazılı olarak size anında yanıt verebilen, konuşmalarınızı analiz edip geçmişe dönük özetleyen akıllı yapay zeka asistanınızım."
             }
             lower.contains("saat") || lower.contains("tarih") -> {
-                val now = java.text.SimpleDateFormat("HH:mm, dd MMMM yyyy", java.util.Locale.forLanguageTag("tr-TR")).format(java.util.Date())
+                val now = SimpleDateFormat("HH:mm, dd MMMM yyyy", Locale.forLanguageTag("tr-TR")).format(
+                    Date()
+                )
                 "Şu anki zaman: $now."
             }
             lower.contains("hava") -> {

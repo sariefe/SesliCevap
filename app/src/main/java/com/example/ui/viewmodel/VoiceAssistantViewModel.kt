@@ -59,7 +59,17 @@ class VoiceAssistantViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = AnalyticsSummary()
+            initialValue = AnalyticsSummary(
+                totalConversations = 0,
+                totalMessages = 0,
+                totalUserQueries = 0,
+                dominantSentiment = "—",
+                dominantCategory = "—",
+                mostUsedCategory = "",
+                mostUsedSentiment = "",
+                sentimentDistribution = emptyList(),
+                categoryDistribution = emptyList()
+            )
         )
 
     private var messagesJob: Job? = null
@@ -290,5 +300,4 @@ class VoiceAssistantViewModel @Inject constructor(
         ttsManager.shutdown()
     }
 
-    companion object
 }

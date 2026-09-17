@@ -332,7 +332,7 @@ fun VoiceAssistantScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
+                            .padding(18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
