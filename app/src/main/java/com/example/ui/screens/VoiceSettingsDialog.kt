@@ -26,6 +26,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -52,7 +53,8 @@ fun VoiceSettingsDialog(
     initialAutoSpeak: Boolean,
     initialSpeechRate: Float,
     initialSpeechPitch: Float,
-    onSave: (isVoiceEnabled: Boolean, autoSpeak: Boolean, speechRate: Float, speechPitch: Float) -> Unit,
+    initialElevenLabsApiKey: String = "",
+    onSave: (isVoiceEnabled: Boolean, autoSpeak: Boolean, speechRate: Float, speechPitch: Float, elevenLabsApiKey: String) -> Unit,
     onTestVoice: (speechRate: Float, speechPitch: Float) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -60,6 +62,7 @@ fun VoiceSettingsDialog(
     var autoSpeak by remember { mutableStateOf(initialAutoSpeak) }
     var speechRate by remember { mutableFloatStateOf(initialSpeechRate) }
     var speechPitch by remember { mutableFloatStateOf(initialSpeechPitch) }
+    var elevenLabsApiKey by remember { mutableStateOf(initialElevenLabsApiKey) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -261,6 +264,19 @@ fun VoiceSettingsDialog(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // ElevenLabs API Key Optional Input
+                        OutlinedTextField(
+                            value = elevenLabsApiKey,
+                            onValueChange = { elevenLabsApiKey = it },
+                            label = { Text("ElevenLabs API Anahtarı (Opsiyonel Nöral Ses)") },
+                            placeholder = { Text("sk_1234567890...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         // Speech rate
                         Text(
                             text = "Konuşma Hızı: ${"%.1f".format(Locale.US, speechRate)}x",
@@ -341,7 +357,7 @@ fun VoiceSettingsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(isVoiceEnabled, autoSpeak, speechRate, speechPitch)
+                    onSave(isVoiceEnabled, autoSpeak, speechRate, speechPitch, elevenLabsApiKey)
                     onDismiss()
                 },
                 modifier = Modifier.testTag("save_settings_btn")
@@ -366,7 +382,7 @@ fun VoiceSettingsDialogPreview() {
             initialAutoSpeak = true,
             initialSpeechRate = 1.0f,
             initialSpeechPitch = 1.0f,
-            onSave = { _, _, _, _ -> },
+            onSave = { _, _, _, _, _ -> },
             onTestVoice = { _, _ -> },
             onDismiss = {}
         )

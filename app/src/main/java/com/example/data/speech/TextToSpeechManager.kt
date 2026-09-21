@@ -194,8 +194,9 @@ class TextToSpeechManager(private val context: Context) {
         currentOnDoneCallback = onDone
 
         try {
-            textToSpeech?.setSpeechRate((speechRate * 0.9f).coerceIn(0.5f, 2.0f))
-            textToSpeech?.setPitch((pitch * 0.95f).coerceIn(0.5f, 2.0f))
+            // 0.92f hız ve 0.96f pitch insansı temposuna mükemmel uyar
+            textToSpeech?.setSpeechRate((speechRate * 0.92f).coerceIn(0.5f, 2.0f))
+            textToSpeech?.setPitch((pitch * 0.96f).coerceIn(0.5f, 2.0f))
 
             val utteranceId = UUID.randomUUID().toString()
             val cleanText = sanitizeTextForSpeech(text)
@@ -248,7 +249,7 @@ class TextToSpeechManager(private val context: Context) {
     }
 
     /**
-     * Metni TTS için temizler ve daha doğal okunmasını sağlar.
+     * Metni TTS için temizler ve daha doğal nefes duraklamaları ekler.
      */
     private fun sanitizeTextForSpeech(input: String): String {
         return input
@@ -258,6 +259,7 @@ class TextToSpeechManager(private val context: Context) {
             .replace(Regex("\\s{2,}"), " ")
             .replace(Regex("\\n+"), ", ")
             .replace(Regex("\\.{2,}"), "...")
+            .replace(". ", ", ")
             .trimEnd(',', ' ')
             .trim()
     }

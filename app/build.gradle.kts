@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -24,6 +25,18 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+    // Read keys directly from local.properties
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+      localProperties.load(localPropertiesFile.inputStream())
+    }
+
+    val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+    val elevenLabsKey = localProperties.getProperty("ELEVENLABS_API_KEY") ?: ""
+
+    buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+    buildConfigField("String", "ELEVENLABS_API_KEY", "\"$elevenLabsKey\"")
   }
 
   signingConfigs {
@@ -71,10 +84,9 @@ android {
   }
 }
 
-// Configure the Secrets Gradle Plugin to use .env and .env.example files
-// to match the convention used in Web projects.
+// Configure Secrets Gradle Plugin to read local.properties
 secrets {
-  propertiesFileName = ".env"
+  propertiesFileName = "local.properties"
   defaultPropertiesFileName = ".env.example"
   ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
 }

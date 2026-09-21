@@ -4,9 +4,9 @@ import android.annotation.SuppressLint
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.VoiceAssistantRepository
+import com.example.data.speech.ElevenLabsTtsManager
 import com.example.data.speech.SpeechRecognitionManager
 import com.example.data.speech.SpeechState
-import com.example.data.speech.TextToSpeechManager
 import com.example.data.speech.TtsState
 import com.example.domain.model.AnalyticsSummary
 import com.example.domain.model.ChatMessage
@@ -40,6 +40,7 @@ data class VoiceUiState(
     val autoSpeak: Boolean = true,
     val speechRate: Float = 1.0f,
     val speechPitch: Float = 1.0f,
+    val elevenLabsApiKey: String = "",
     val userErrorMessage: String? = null
 )
 
@@ -47,7 +48,7 @@ data class VoiceUiState(
 class VoiceAssistantViewModel @Inject constructor(
     private val repository: VoiceAssistantRepository,
     private val speechManager: SpeechRecognitionManager,
-    private val ttsManager: TextToSpeechManager
+    private val ttsManager: ElevenLabsTtsManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VoiceUiState())
@@ -308,7 +309,8 @@ class VoiceAssistantViewModel @Inject constructor(
         ttsManager.speak(
             text = text,
             speechRate = _uiState.value.speechRate,
-            pitch = _uiState.value.speechPitch
+            pitch = _uiState.value.speechPitch,
+            elevenLabsApiKey = _uiState.value.elevenLabsApiKey
         )
     }
 
@@ -329,7 +331,13 @@ class VoiceAssistantViewModel @Inject constructor(
         _uiState.update { it.copy(isVoiceEnabled = newVoiceEnabled) }
     }
 
-    fun updateSettings(isVoiceEnabled: Boolean, autoSpeak: Boolean, rate: Float, pitch: Float) {
+    fun updateSettings(
+        isVoiceEnabled: Boolean,
+        autoSpeak: Boolean,
+        rate: Float,
+        pitch: Float,
+        elevenLabsApiKey: String = _uiState.value.elevenLabsApiKey
+    ) {
         if (!isVoiceEnabled) {
             stopVoiceInput()
             stopAudio()
@@ -339,7 +347,8 @@ class VoiceAssistantViewModel @Inject constructor(
                 isVoiceEnabled = isVoiceEnabled,
                 autoSpeak = autoSpeak,
                 speechRate = rate,
-                speechPitch = pitch
+                speechPitch = pitch,
+                elevenLabsApiKey = elevenLabsApiKey
             )
         }
     }

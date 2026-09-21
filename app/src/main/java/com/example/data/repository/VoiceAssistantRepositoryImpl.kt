@@ -247,7 +247,7 @@ class VoiceAssistantRepositoryImpl(
         history: List<MessageEntity> = emptyList()
     ): String {
         val apiKey = BuildConfig.GEMINI_API_KEY
-        val hasValidApiKey = apiKey.isNotBlank()
+        val hasValidApiKey = apiKey.isNotBlank() && !apiKey.contains("placeholder")
 
         Timber.d("API key present: %b", hasValidApiKey)
 
@@ -273,17 +273,16 @@ class VoiceAssistantRepositoryImpl(
                         parts = listOf(
                             Part(
                                 text = """
-                                    Sen samimi, sıcak ve anlayışlı bir Türkçe sesli asistansın.
-                                    Konuşma diline çok yakın yaz — kısa cümleler kur, "yani", "aslında", 
-                                    "şöyle düşün" gibi günlük bağlaçlar kullan.
-                                    Robotik veya resmi bir dil kullanma.
-                                    Kullanıcının duygusunu yakala: mutluysa sevinç paylaş,
-                                    merak ediyorsa heyecanla anlat, üzgünse empati kur.
-                                    Gerektiğinde "Hmm", "Şöyle söyleyeyim", "Aslında bakacak olursak" gibi
-                                    düşünce geçişleri ekle — bu sesi daha doğal kılar.
-                                    Maddeler ve başlıklar kullanma; her şeyi akıcı bir konuşma gibi yaz.
-                                    Cevabın 3-4 cümleyi geçmesin, sesli dinlemeye uygun olsun.
-                                    Önceki konuşmayı hatırlıyorsun ve bağlamı sürdürüyorsun.
+                                    Sen samimi, sıcak, empatik ve canlı bir Türkçe sesli asistansın.
+                                    
+                                    ÇOK ÖNEMLİ KONUŞMA KURALLARI:
+                                    1. Asla resmi, robotik veya kitabi dil kullanma. Yakın bir arkadaş gibi günlük konuşma dilinde yaz.
+                                    2. Cümlelerine insansı düşünce geçişleri ve günlük bağlaçlar ekle:
+                                       ("Yani...", "Hımm...", "Aslında bakarsan", "Anladım seni", "Açıkçası...", "Şöyle söyleyeyim")
+                                    3. Asla maddeler (* / -), başlıklar (#) veya kalın/eğik kelimeler (** / __) kullanma.
+                                    4. Cümleleri kısa tut ve aralara virgül (,) koy. Bu, seslendirilerken doğal nefes duraklaması yaratır.
+                                    5. Kullanıcının duygusunu yakala: mutluysa sevin, meraklıysa heyecanla anlat, üzgünse empati kur.
+                                    6. Yanıtların en fazla 2-3 akıcı cümleden oluşsun; sesli dinlemeye mükemmel uygunlukta olsun.
                                 """.trimIndent()
                             )
                         )
@@ -297,11 +296,10 @@ class VoiceAssistantRepositoryImpl(
 
                 val response = geminiApiService.generateContent(apiKey, request)
 
-                // API hata döndürdüyse Türkçe mesaj göster
+                // API hata döndürdüyse akıllı yerel yanıta düş
                 response.error?.let { err ->
-                    val turkishError = translateApiError(err.code)
-                    Timber.w("Gemini API error %d: %s", err.code, err.message)
-                    return turkishError
+                    Timber.w("Gemini API error %d: %s, falling back to inteligente response", err.code, err.message)
+                    return generateIntelligentFallback(prompt)
                 }
 
                 val candidateText = response.candidates
@@ -315,9 +313,8 @@ class VoiceAssistantRepositoryImpl(
                     return candidateText.trim()
                 }
             } catch (e: Exception) {
-                val turkishError = translateException(e)
-                Timber.w(e, "Gemini API call failed: %s", e.localizedMessage)
-                return turkishError
+                Timber.w(e, "Gemini API call failed (%s), falling back to inteligente response", e.localizedMessage)
+                return generateIntelligentFallback(prompt)
             }
         }
 
@@ -325,35 +322,7 @@ class VoiceAssistantRepositoryImpl(
     }
 
     // -------------------------------------------------------------------------
-    // Hata mesajlarını Türkçeleştir
-    // -------------------------------------------------------------------------
-
-    private fun translateApiError(code: Int?): String {
-        return when (code) {
-            400 -> "Geçersiz istek gönderildi. Lütfen tekrar deneyin."
-            401, 403 -> "API anahtarı geçersiz veya yetkisiz erişim. Ayarları kontrol edin."
-            429 -> "Çok fazla istek gönderildi. Biraz bekleyip tekrar deneyin."
-            500, 503 -> "Yapay zeka sunucusunda geçici bir sorun var. Kısa süre sonra tekrar deneyin."
-            else -> "Yapay zeka şu an yanıt veremiyor (Hata: $code). Lütfen tekrar deneyin."
-        }
-    }
-
-    private fun translateException(e: Exception): String {
-        val message = e.localizedMessage?.lowercase() ?: ""
-        return when {
-            message.contains("unable to resolve host") ||
-                    message.contains("failed to connect") ||
-                    message.contains("network") -> "İnternet bağlantısı bulunamadı. Bağlantınızı kontrol edin."
-            message.contains("timeout") ||
-                    message.contains("timed out") -> "Bağlantı zaman aşımına uğradı. Tekrar deneyin."
-            message.contains("ssl") ||
-                    message.contains("certificate") -> "Güvenli bağlantı kurulamadı. Tekrar deneyin."
-            else -> "Yapay zeka şu an yanıt veremiyor. Lütfen tekrar deneyin."
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Yerel yedek cevaplar (API yokken)
+    // Yerel yedek cevaplar (API yokken veya hata anında)
     // -------------------------------------------------------------------------
 
     private fun generateIntelligentFallback(prompt: String): String {

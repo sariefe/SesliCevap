@@ -3,7 +3,10 @@ package com.example.ui.viewmodel
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.entity.ConversationHistoryEntity
+import com.example.data.remote.ElevenLabsApiService
+import com.example.data.remote.model.ElevenLabsTtsRequest
 import com.example.data.repository.VoiceAssistantRepository
+import com.example.data.speech.ElevenLabsTtsManager
 import com.example.data.speech.SpeechRecognitionManager
 import com.example.data.speech.TextToSpeechManager
 import com.example.domain.model.AnalyticsSummary
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import okhttp3.ResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,7 +41,7 @@ class VoiceAssistantViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeVoiceRepository
     private lateinit var speechManager: SpeechRecognitionManager
-    private lateinit var ttsManager: TextToSpeechManager
+    private lateinit var elevenLabsTtsManager: ElevenLabsTtsManager
     private lateinit var viewModel: VoiceAssistantViewModel
 
     @Before
@@ -46,12 +50,22 @@ class VoiceAssistantViewModelTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         fakeRepository = FakeVoiceRepository()
         speechManager = SpeechRecognitionManager(context)
-        ttsManager = TextToSpeechManager(context)
+        val nativeTts = TextToSpeechManager(context)
+        val fakeElevenLabsApi = object : ElevenLabsApiService {
+            override suspend fun generateSpeechStream(
+                voiceId: String,
+                apiKey: String,
+                request: ElevenLabsTtsRequest
+            ): ResponseBody {
+                throw UnsupportedOperationException("Fake ElevenLabs API for test")
+            }
+        }
+        elevenLabsTtsManager = ElevenLabsTtsManager(context, fakeElevenLabsApi, nativeTts)
 
         viewModel = VoiceAssistantViewModel(
             repository = fakeRepository,
             speechManager = speechManager,
-            ttsManager = ttsManager,
+            ttsManager = elevenLabsTtsManager,
         )
     }
 

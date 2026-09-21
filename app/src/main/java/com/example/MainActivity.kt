@@ -98,8 +98,8 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
         onClearAllHistory = { viewModel.clearAllHistory() },
         getMessagesForConversation = { viewModel.getMessagesForConversation(it) },
         onDismissError = { viewModel.dismissError() },
-        onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch ->
-            viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
+        onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey ->
+            viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey)
         },
         onPlayAudioText = { viewModel.playAudio(it, force = true) }
     )
@@ -122,7 +122,7 @@ fun VoiceAppRootContent(
     onClearAllHistory: () -> Unit,
     getMessagesForConversation: (Long) -> Flow<List<ChatMessage>>,
     onDismissError: () -> Unit,
-    onUpdateSettings: (Boolean, Boolean, Float, Float) -> Unit,
+    onUpdateSettings: (Boolean, Boolean, Float, Float, String) -> Unit,
     onPlayAudioText: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -311,8 +311,9 @@ fun VoiceAppRootContent(
             initialAutoSpeak = uiState.autoSpeak,
             initialSpeechRate = uiState.speechRate,
             initialSpeechPitch = uiState.speechPitch,
-            onSave = { isVoiceEnabled, autoSpeak, rate, pitch ->
-                onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
+            initialElevenLabsApiKey = uiState.elevenLabsApiKey,
+            onSave = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey ->
+                onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey)
             },
             onTestVoice = { _, _ ->
                 onPlayAudioText("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.")
@@ -370,7 +371,7 @@ fun VoiceAppRootPreview() {
             onClearAllHistory = {},
             getMessagesForConversation = { flowOf(emptyList()) },
             onDismissError = {},
-            onUpdateSettings = { _, _, _, _ -> },
+            onUpdateSettings = { _, _, _, _, _ -> },
             onPlayAudioText = {}
         )
     }

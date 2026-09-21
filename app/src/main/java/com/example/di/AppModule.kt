@@ -5,9 +5,11 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.dao.ConversationDao
 import com.example.data.local.dao.ConversationHistoryDao
 import com.example.data.local.dao.MessageDao
+import com.example.data.remote.ElevenLabsApiService
 import com.example.data.remote.GeminiApiService
 import com.example.data.repository.VoiceAssistantRepository
 import com.example.data.repository.VoiceAssistantRepositoryImpl
+import com.example.data.speech.ElevenLabsTtsManager
 import com.example.data.speech.SpeechRecognitionManager
 import com.example.data.speech.TextToSpeechManager
 import com.squareup.moshi.Moshi
@@ -89,6 +91,17 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideElevenLabsApiService(okHttpClient: OkHttpClient, moshi: Moshi): ElevenLabsApiService {
+        return Retrofit.Builder()
+            .baseUrl("https://api.elevenlabs.io/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(ElevenLabsApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideVoiceAssistantRepository(
         conversationDao: ConversationDao,
         messageDao: MessageDao,
@@ -113,5 +126,19 @@ object AppModule {
     @Singleton
     fun provideTextToSpeechManager(@ApplicationContext context: Context): TextToSpeechManager {
         return TextToSpeechManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideElevenLabsTtsManager(
+        @ApplicationContext context: Context,
+        elevenLabsApiService: ElevenLabsApiService,
+        nativeTtsManager: TextToSpeechManager
+    ): ElevenLabsTtsManager {
+        return ElevenLabsTtsManager(
+            context = context,
+            elevenLabsApiService = elevenLabsApiService,
+            nativeTtsManager = nativeTtsManager
+        )
     }
 }
