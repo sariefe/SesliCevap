@@ -73,12 +73,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.ChatMessage
 import com.example.domain.model.ConversationSession
 import com.example.domain.model.MessageSender
+import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -975,5 +978,34 @@ private fun ConversationDetailBottomSheetContent(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HistoryScreenPreview() {
+    MyApplicationTheme {
+        HistoryScreen(
+            conversations = listOf(
+                ConversationSession(
+                    id = 1L,
+                    title = "Hava Durumu Sorusı",
+                    messageCount = 3,
+                    dominantCategory = "Genel",
+                    dominantSentiment = "Olumlu"
+                ),
+                ConversationSession(
+                    id = 2L,
+                    title = "Kodlama Tavsiyeleri",
+                    messageCount = 5,
+                    dominantCategory = "Teknoloji",
+                    dominantSentiment = "Meraklı"
+                )
+            ),
+            onSelectConversation = {},
+            onDeleteConversation = {},
+            onClearAllHistory = {},
+            getMessagesForConversation = { flowOf(emptyList()) }
+        )
     }
 }

@@ -1,13 +1,26 @@
 package com.example.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * Room Database entity for storing conversation history records,
  * including user input text, AI response, and timestamp.
  */
-@Entity(tableName = "conversation_history")
+@Entity(
+    tableName = "conversation_history",
+    foreignKeys = [
+        ForeignKey(
+            entity = ConversationEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["conversationId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["conversationId"])]
+)
 data class ConversationHistoryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

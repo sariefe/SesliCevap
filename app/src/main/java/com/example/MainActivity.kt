@@ -24,16 +24,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.data.speech.SpeechState
+import com.example.domain.model.AnalyticsSummary
 import com.example.domain.model.ChatMessage
+import com.example.domain.model.ConversationSession
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.VoiceAssistantScreen
@@ -41,13 +49,16 @@ import com.example.ui.screens.VoiceInteractionScreen
 import com.example.ui.screens.VoiceSettingsDialog
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.VoiceAssistantViewModel
-import androidx.compose.ui.tooling.preview.Preview
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.Flow
-import com.example.domain.model.ConversationSession
-import com.example.domain.model.AnalyticsSummary
 import com.example.ui.viewmodel.VoiceUiState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+
+object ScreenRoutes {
+    const val ASSISTANT = "assistant"
+    const val HISTORY = "history"
+    const val ANALYTICS = "analytics"
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -90,7 +101,8 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
         onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch ->
             viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch)
         },
-    ) { viewModel.playAudio(it, force = true) }
+        onPlayAudioText = { viewModel.playAudio(it, force = true) }
+    )
 }
 
 @Composable
@@ -114,21 +126,24 @@ fun VoiceAppRootContent(
     onPlayAudioText: (String) -> Unit
 ) {
     val context = LocalContext.current
-    var currentTab by rememberSaveable { mutableIntStateOf(0) }
-    var showSettingsDialog by remember { mutableStateOf(value = false) }
-    var showVoiceInteractionScreen by remember { mutableStateOf(value = false) }
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: ScreenRoutes.ASSISTANT
+
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showVoiceInteractionScreen by remember { mutableStateOf(false) }
 
     var hasMicPermission by remember {
         mutableStateOf(
-            value = ContextCompat.checkSelfPermission(
+            ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED,
+            ) == PackageManager.PERMISSION_GRANTED
         )
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
+        contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasMicPermission = isGranted
         if (isGranted) {
@@ -144,46 +159,80 @@ fun VoiceAppRootContent(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 NavigationBarItem(
-                    selected = currentTab == 0,
-                    onClick = { currentTab = 0 },
+                    selected = currentRoute == ScreenRoutes.ASSISTANT,
+                    onClick = {
+                        if (currentRoute != ScreenRoutes.ASSISTANT) {
+                            navController.navigate(ScreenRoutes.ASSISTANT) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.RecordVoiceOver,
-                            contentDescription = "Sesli Asistan",
+                            contentDescription = stringResource(R.string.nav_assistant)
                         )
                     },
-                    label = { Text("Sesli Asistan") },
-                    modifier = Modifier.testTag("nav_assistant_tab"),
+                    label = { Text(stringResource(R.string.nav_assistant)) },
+                    modifier = Modifier.testTag("nav_assistant_tab")
                 )
                 NavigationBarItem(
-                    selected = currentTab == 1,
-                    onClick = { currentTab = 1 },
+                    selected = currentRoute == ScreenRoutes.HISTORY,
+                    onClick = {
+                        if (currentRoute != ScreenRoutes.HISTORY) {
+                            navController.navigate(ScreenRoutes.HISTORY) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.History,
-                            contentDescription = "Geçmiş",
+                            contentDescription = stringResource(R.string.nav_history)
                         )
                     },
-                    label = { Text("Geçmiş") },
-                    modifier = Modifier.testTag("nav_history_tab"),
+                    label = { Text(stringResource(R.string.nav_history)) },
+                    modifier = Modifier.testTag("nav_history_tab")
                 )
                 NavigationBarItem(
-                    selected = currentTab == 2,
-                    onClick = { currentTab = 2 },
+                    selected = currentRoute == ScreenRoutes.ANALYTICS,
+                    onClick = {
+                        if (currentRoute != ScreenRoutes.ANALYTICS) {
+                            navController.navigate(ScreenRoutes.ANALYTICS) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Analytics,
-                            contentDescription = "Analiz",
+                            contentDescription = stringResource(R.string.nav_analytics)
                         )
                     },
-                    label = { Text("Analiz") },
-                    modifier = Modifier.testTag("nav_analytics_tab"),
+                    label = { Text(stringResource(R.string.nav_analytics)) },
+                    modifier = Modifier.testTag("nav_analytics_tab")
                 )
             }
-        },
+        }
     ) { innerPadding ->
-        when (currentTab) {
-            0 -> {
+        NavHost(
+            navController = navController,
+            startDestination = ScreenRoutes.ASSISTANT,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(ScreenRoutes.ASSISTANT) {
                 VoiceAssistantScreen(
                     uiState = uiState,
                     conversations = conversations,
@@ -208,42 +257,49 @@ fun VoiceAppRootContent(
                             showSettingsDialog = true
                         } else if (hasMicPermission) {
                             showVoiceInteractionScreen = true
-                            if (uiState.speechState !is com.example.data.speech.SpeechState.Listening) {
+                            if (uiState.speechState !is SpeechState.Listening) {
                                 onStartVoiceInput()
                             }
                         } else {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onDismissError = onDismissError,
-                    modifier = Modifier.padding(innerPadding),
+                    onDismissError = onDismissError
                 )
             }
-            1 -> {
+            composable(ScreenRoutes.HISTORY) {
                 HistoryScreen(
                     conversations = conversations,
                     onSelectConversation = { convId ->
                         onSelectConversation(convId)
-                        currentTab = 0
+                        navController.navigate(ScreenRoutes.ASSISTANT) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
                     },
                     onDeleteConversation = onDeleteConversation,
                     onClearAllHistory = onClearAllHistory,
                     onPlayAudio = onPlayAudioText,
-                    getMessagesForConversation = getMessagesForConversation,
-                    modifier = Modifier.padding(innerPadding),
+                    getMessagesForConversation = getMessagesForConversation
                 )
             }
-            2 -> {
+            composable(ScreenRoutes.ANALYTICS) {
                 AnalyticsScreen(
                     analytics = analytics,
                     conversations = conversations,
                     onSelectConversation = { convId ->
                         onSelectConversation(convId)
-                        currentTab = 0
+                        navController.navigate(ScreenRoutes.ASSISTANT) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
                     },
                     onDeleteConversation = onDeleteConversation,
-                    onClearAllHistory = onClearAllHistory,
-                    modifier = Modifier.padding(innerPadding),
+                    onClearAllHistory = onClearAllHistory
                 )
             }
         }
@@ -279,7 +335,7 @@ fun VoiceAppRootContent(
             onStopAudio = onStopAudio,
             onClose = { showVoiceInteractionScreen = false },
             onOpenSettings = { showSettingsDialog = true },
-            onSelectPrompt = onSendTextMessage,
+            onSelectPrompt = onSendTextMessage
         )
     }
 }
@@ -315,6 +371,7 @@ fun VoiceAppRootPreview() {
             getMessagesForConversation = { flowOf(emptyList()) },
             onDismissError = {},
             onUpdateSettings = { _, _, _, _ -> },
-        ) {}
+            onPlayAudioText = {}
+        )
     }
 }

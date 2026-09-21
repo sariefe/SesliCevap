@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">Sesli Cevap</string>
+    <string name="nav_assistant">Sesli Asistan</string>
+    <string name="nav_history">Geçmiş</string>
+    <string name="nav_analytics">Analiz</string>
+    <string name="text_only_mode">Sadece Metin Modu (Sessiz)</string>
+    <string name="listening">Dinleniyor&#8230;</string>
+    <string name="speaking">Seslendiriliyor&#8230;</string>
+    <string name="processing">Analiz ediliyor&#8230;</string>
+    <string name="full_voice_ready">Tam Sesli Etkileşim Hazır</string>
+    <string name="new_voice_chat">+ Yeni Sesli Sohbet</string>
+    <string name="change_chats">Sohbetleri Değiştir</string>
+    <string name="switch_to_text">Metin Moduna Geç</string>
+    <string name="switch_to_voice">Sesli Moda Geç</string>
+    <string name="voice_interaction_screen">Sesli Etkileşim Ekranı</string>
+    <string name="new_chat">Yeni Sohbet</string>
+    <string name="settings">Ayarlar</string>
+    <string name="ask_voice_question">Sesli Soru Sorun</string>
+    <string name="type_message">Mesajınızı yazın&#8230;</string>
+    <string name="type_text_question">Metinle soru sorun&#8230;</string>
+    <string name="send">Gönder</string>
+    <string name="clear">Temizle</string>
+    <string name="search">Ara</string>
+    <string name="delete_conversation">Konuşmayı Sil</string>
+    <string name="clear_all_history">Tüm Geçmişi Temizle</string>
+    <string name="yes_delete">Evet, Sil</string>
+    <string name="cancel">Vazgeç</string>
+    <string name="mic_click_speak">Konuşmak için mikrofona dokunun</string>
 </resources>

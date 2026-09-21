@@ -70,13 +70,16 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.data.speech.SpeechState
 import com.example.data.speech.TtsState
 import com.example.domain.model.ChatMessage
 import com.example.domain.model.ConversationSession
+import com.example.domain.model.MessageSender
 import com.example.ui.components.ChatMessageItem
 import com.example.ui.components.PulsingWaveCanvas
 import com.example.ui.components.VoiceMicButton
+import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.VoiceUiState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -665,5 +668,44 @@ fun VoiceAssistantScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VoiceAssistantScreenPreview() {
+    MyApplicationTheme {
+        VoiceAssistantScreen(
+            uiState = VoiceUiState(
+                currentConversationTitle = "Örnek Sesli Sohbet",
+                messages = listOf(
+                    ChatMessage(
+                        id = 1L,
+                        conversationId = 1L,
+                        sender = MessageSender.USER,
+                        text = "Merhaba, bugün hava nasıl?"
+                    ),
+                    ChatMessage(
+                        id = 2L,
+                        conversationId = 1L,
+                        sender = MessageSender.AI,
+                        text = "Merhaba! Bugün hava parçalı bulutlu ve sıcaklık 22 derece."
+                    )
+                )
+            ),
+            conversations = listOf(
+                ConversationSession(id = 1L, title = "Örnek Sesli Sohbet")
+            ),
+            onMicClick = {},
+            onToggleVoiceMode = {},
+            onSendTextMessage = {},
+            onPlayAudio = {},
+            onStopAudio = {},
+            onSelectConversation = {},
+            onNewConversation = {},
+            onOpenSettings = {},
+            onOpenVoiceInteraction = {},
+            onDismissError = {}
+        )
     }
 }

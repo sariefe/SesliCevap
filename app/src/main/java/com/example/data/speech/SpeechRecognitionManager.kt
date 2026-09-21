@@ -2,6 +2,10 @@ package com.example.data.speech
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -24,6 +28,9 @@ class SpeechRecognitionManager(private val context: Context) {
 
     private var speechRecognizer: SpeechRecognizer? = null
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+
     private val _speechState = MutableStateFlow<SpeechState>(SpeechState.Idle)
     val speechState: StateFlow<SpeechState> = _speechState.asStateFlow()
 
@@ -32,6 +39,48 @@ class SpeechRecognitionManager(private val context: Context) {
 
     val isRecognitionAvailable: Boolean
         get() = SpeechRecognizer.isRecognitionAvailable(context)
+
+    private fun requestAudioFocus() {
+        audioManager?.let { am ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val attrs = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+
+                val focusReq = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(attrs)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                            stopListening()
+                        }
+                    }
+                    .build()
+
+                audioFocusRequest = focusReq
+                am.requestAudioFocus(focusReq)
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(
+                    { focusChange -> if (focusChange == AudioManager.AUDIOFOCUS_LOSS) stopListening() },
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+            }
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        audioManager?.let { am ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+                audioFocusRequest = null
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(null)
+            }
+        }
+    }
 
     fun startListening(locale: Locale = Locale.forLanguageTag("tr-TR")) {
         if (!isRecognitionAvailable) {
@@ -42,6 +91,8 @@ class SpeechRecognitionManager(private val context: Context) {
 
         try {
             stopListening()
+            requestAudioFocus()
+
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
                 setRecognitionListener(createListener())
             }
@@ -60,6 +111,7 @@ class SpeechRecognitionManager(private val context: Context) {
             Timber.d("Started listening for speech in language: %s", locale)
         } catch (e: Exception) {
             Timber.e(e, "Error starting speech recognition")
+            abandonAudioFocus()
             _speechState.value = SpeechState.Error("Ses dinleme başlatılamadı: ${e.localizedMessage}")
         }
     }
@@ -72,6 +124,7 @@ class SpeechRecognitionManager(private val context: Context) {
         } catch (e: Exception) {
             Timber.e(e, "Error stopping speech recognition")
         } finally {
+            abandonAudioFocus()
             speechRecognizer = null
             _rmsDb.value = 0f
             if (_speechState.value is SpeechState.Listening) {
@@ -81,6 +134,7 @@ class SpeechRecognitionManager(private val context: Context) {
     }
 
     fun resetState() {
+        abandonAudioFocus()
         _speechState.value = SpeechState.Idle
         _rmsDb.value = 0f
     }
@@ -98,7 +152,6 @@ class SpeechRecognitionManager(private val context: Context) {
             }
 
             override fun onRmsChanged(rmsdB: Float) {
-                // Normalize roughly 0 to 10 for UI visualizer
                 val normalized = (rmsdB.coerceIn(0f, 10f))
                 _rmsDb.value = normalized
             }
@@ -112,6 +165,7 @@ class SpeechRecognitionManager(private val context: Context) {
 
             override fun onError(error: Int) {
                 _rmsDb.value = 0f
+                abandonAudioFocus()
                 val message = when (error) {
                     SpeechRecognizer.ERROR_AUDIO -> "Ses kaydı hatası oluştu."
                     SpeechRecognizer.ERROR_CLIENT -> "İstemci hatası."
@@ -130,6 +184,7 @@ class SpeechRecognitionManager(private val context: Context) {
 
             override fun onResults(results: Bundle?) {
                 _rmsDb.value = 0f
+                abandonAudioFocus()
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val text = matches?.firstOrNull() ?: ""
                 Timber.d("SpeechRecognizer result: %s", text)

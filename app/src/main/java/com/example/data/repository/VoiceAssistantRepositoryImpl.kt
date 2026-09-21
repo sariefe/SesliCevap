@@ -34,7 +34,7 @@ class VoiceAssistantRepositoryImpl(
     private val conversationDao: ConversationDao,
     private val messageDao: MessageDao,
     private val geminiApiService: GeminiApiService,
-    private val conversationHistoryDao: ConversationHistoryDao? = null
+    private val conversationHistoryDao: ConversationHistoryDao? = null,
 ) : VoiceAssistantRepository {
 
     override fun getConversations(): Flow<List<ConversationSession>> {
@@ -67,7 +67,7 @@ class VoiceAssistantRepositoryImpl(
                 lastUpdated = System.currentTimeMillis(),
                 messageCount = 0,
                 dominantCategory = "Genel",
-                dominantSentiment = "Nötr"
+                dominantSentiment = "Nötr",
             )
             val id = conversationDao.insertConversation(newEntity)
             Timber.d("Created new conversation session with id: %d", id)
@@ -102,26 +102,27 @@ class VoiceAssistantRepositoryImpl(
 
             // Konuşma başlığını güncelle (ilk mesajsa)
             val currentConv = conversationDao.getConversationByIdOnce(conversationId)
-            if (currentConv != null &&
-                (currentConv.messageCount == 0 || currentConv.title.startsWith("Yeni Sesli"))
-            ) {
-                val newTitle = if (prompt.length > 32) "${prompt.take(30)}..." else prompt
-                conversationDao.updateConversation(
-                    currentConv.copy(
-                        title = newTitle,
-                        lastUpdated = System.currentTimeMillis(),
-                        messageCount = currentConv.messageCount + 1,
-                        dominantCategory = userCategory,
-                        dominantSentiment = userSentiment
+            currentConv?.let { conv ->
+                val isFirstMsg = conv.messageCount == 0 || conv.title.startsWith("Yeni Sesli")
+                if (isFirstMsg) {
+                    val newTitle = if (prompt.length > 32) "${prompt.take(30)}..." else prompt
+                    conversationDao.updateConversation(
+                        conv.copy(
+                            title = newTitle,
+                            lastUpdated = System.currentTimeMillis(),
+                            messageCount = conv.messageCount + 1,
+                            dominantCategory = userCategory,
+                            dominantSentiment = userSentiment
+                        )
                     )
-                )
-            } else if (currentConv != null) {
-                conversationDao.updateConversation(
-                    currentConv.copy(
-                        lastUpdated = System.currentTimeMillis(),
-                        messageCount = currentConv.messageCount + 1
+                } else {
+                    conversationDao.updateConversation(
+                        conv.copy(
+                            lastUpdated = System.currentTimeMillis(),
+                            messageCount = conv.messageCount + 1
+                        )
                     )
-                )
+                }
             }
 
             // 2. Bu konuşmanın tüm geçmişini çek — Gemini'ye bağlam olarak gönderilecek
@@ -206,18 +207,18 @@ class VoiceAssistantRepositoryImpl(
             val totalUserQueries = userMessages.size
 
             val sentimentGroups = messages.groupBy { it.sentiment }
-            val sentimentStats = sentimentGroups.map { (sentiment, list) ->
+            val sentimentStats = sentimentGroups.asSequence().map { (sentiment, list) ->
                 val percentage =
                     if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
                 SentimentStat(sentiment = sentiment, count = list.size, percentage = percentage)
-            }.sortedByDescending { it.count }
+            }.sortedByDescending { it.count }.toList()
 
             val categoryGroups = messages.groupBy { it.category }
-            val categoryStats = categoryGroups.map { (category, list) ->
+            val categoryStats = categoryGroups.asSequence().map { (category, list) ->
                 val percentage =
                     if (totalMsgs > 0) (list.size.toFloat() / totalMsgs) * 100f else 0f
                 CategoryStat(category = category, count = list.size, percentage = percentage)
-            }.sortedByDescending { it.count }
+            }.sortedByDescending { it.count }.toList()
 
             val dominantCategory = categoryStats.firstOrNull()?.category ?: "Genel"
             val dominantSentiment = sentimentStats.firstOrNull()?.sentiment ?: "Nötr"
@@ -232,7 +233,7 @@ class VoiceAssistantRepositoryImpl(
                 dominantSentiment = dominantSentiment,
                 sentimentDistribution = sentimentStats,
                 categoryDistribution = categoryStats,
-                recentSessions = conversations.take(5).map { it.toDomain() }
+                recentSessions = conversations.asSequence().take(5).map { it.toDomain() }.toList()
             )
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.speech.SpeechState
@@ -46,6 +47,7 @@ import com.example.data.speech.TtsState
 import com.example.domain.model.MessageSender
 import com.example.ui.components.PulsingMicOrb
 import com.example.ui.components.PulsingWaveCanvas
+import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.VoiceUiState
 
 /**
@@ -346,5 +348,22 @@ fun VoiceInteractionScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VoiceInteractionScreenPreview() {
+    MyApplicationTheme {
+        VoiceInteractionScreen(
+            uiState = VoiceUiState(
+                currentConversationTitle = "Sesli Etkileşim"
+            ),
+            onMicClick = {},
+            onStopAudio = {},
+            onClose = {},
+            onOpenSettings = {},
+            onSelectPrompt = {}
+        )
     }
 }

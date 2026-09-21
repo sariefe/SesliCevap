@@ -41,7 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.MyApplicationTheme
 import java.util.Locale
 
 @Composable
@@ -353,4 +355,20 @@ fun VoiceSettingsDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun VoiceSettingsDialogPreview() {
+    MyApplicationTheme {
+        VoiceSettingsDialog(
+            initialIsVoiceEnabled = true,
+            initialAutoSpeak = true,
+            initialSpeechRate = 1.0f,
+            initialSpeechPitch = 1.0f,
+            onSave = { _, _, _, _ -> },
+            onTestVoice = { _, _ -> },
+            onDismiss = {}
+        )
+    }
 }

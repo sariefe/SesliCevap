@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -181,14 +182,13 @@ class VoiceAssistantViewModel @Inject constructor(
 
     private fun initializeDefaultConversation() {
         viewModelScope.launch {
-            conversations.collectLatest { list ->
-                if (_uiState.value.currentConversationId == null) {
-                    if (list.isNotEmpty()) {
-                        selectConversation(list.first().id)
-                    } else {
-                        val newId = repository.createNewConversation("Yeni Sesli Sohbet")
-                        selectConversation(newId)
-                    }
+            val list = conversations.first()
+            if (_uiState.value.currentConversationId == null) {
+                if (list.isNotEmpty()) {
+                    selectConversation(list.first().id)
+                } else {
+                    val newId = repository.createNewConversation("Yeni Sesli Sohbet")
+                    selectConversation(newId)
                 }
             }
         }

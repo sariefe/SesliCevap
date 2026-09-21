@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.AppDatabase
+import com.example.data.local.entity.ConversationEntity
 import com.example.data.local.entity.ConversationHistoryEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -17,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [34])
 class ExampleRobolectricTest {
 
   private lateinit var database: AppDatabase
@@ -44,10 +45,18 @@ class ExampleRobolectricTest {
 
   @Test
   fun `conversation history dao stores user input text, ai response and timestamp`() = runBlocking {
+    val convDao = database.conversationDao()
+    val convId = convDao.insertConversation(
+      ConversationEntity(
+        id = 1L,
+        title = "Test Conversation"
+      )
+    )
+
     val dao = database.conversationHistoryDao()
     val testTimestamp = 1700000000000L
     val historyItem = ConversationHistoryEntity(
-      conversationId = 1L,
+      conversationId = convId,
       userInputText = "Yapay zeka nedir?",
       aiResponse = "Yapay zeka, insan benzeri düşünme ve öğrenme kabiliyeti sunan sistemlerdir.",
       timestamp = testTimestamp
@@ -66,4 +75,3 @@ class ExampleRobolectricTest {
     assertEquals(id, all[0].id)
   }
 }
-
