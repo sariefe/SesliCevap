@@ -12,6 +12,7 @@ import com.example.data.local.dao.MessageDao
 import com.example.data.local.entity.ConversationEntity
 import com.example.data.local.entity.ConversationHistoryEntity
 import com.example.data.local.entity.MessageEntity
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [
@@ -29,6 +30,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun conversationHistoryDao(): ConversationHistoryDao
 
     companion object {
+        private const val DATABASE_NAME = "voice_assistant.db"
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -45,11 +48,19 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                val appContext = context.applicationContext
+                DatabasePassphraseProvider.migrateToEncryptedDatabaseIfNeeded(appContext, DATABASE_NAME)
+                System.loadLibrary("sqlcipher")
+
+                val passphrase = DatabasePassphraseProvider.getPassphrase(appContext)
+                val supportFactory = SupportOpenHelperFactory(passphrase)
+
                 val instance = Room.databaseBuilder(
-                    context.applicationContext,
+                    appContext,
                     AppDatabase::class.java,
-                    "voice_assistant.db"
+                    DATABASE_NAME
                 )
+                    .openHelperFactory(supportFactory)
                     .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigrationOnDowngrade(true)
                     .build()

@@ -97,7 +97,7 @@ class VoiceAssistantRepositoryImpl(
             messageDao.insertMessage(userMessageEntity)
             Timber.i(
                 "Saved user message to DB: %s (Category: %s, Sentiment: %s)",
-                prompt.take(30), userCategory, userSentiment
+                maskSensitive(prompt), userCategory, userSentiment
             )
 
             // Konuşma başlığını güncelle (ilk mesajsa)
@@ -249,7 +249,7 @@ class VoiceAssistantRepositoryImpl(
         val apiKey = BuildConfig.GEMINI_API_KEY
         val hasValidApiKey = apiKey.isNotBlank() && !apiKey.contains("placeholder")
 
-        Timber.d("API key present: %b", hasValidApiKey)
+        Timber.d("Gemini API key present: %b (masked: %s)", hasValidApiKey, maskSensitive(apiKey))
 
         if (hasValidApiKey) {
             try {
@@ -425,6 +425,16 @@ class VoiceAssistantRepositoryImpl(
 
             else -> "Nötr"
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Güvenlik: hassas log maskeleme
+    // -------------------------------------------------------------------------
+
+    private fun maskSensitive(value: String): String {
+        if (value.isBlank()) return "***"
+        val visible = value.take(4)
+        return "$visible***"
     }
 
     // -------------------------------------------------------------------------

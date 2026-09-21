@@ -1,6 +1,7 @@
 package com.example.di
 
 import android.content.Context
+import com.example.BuildConfig
 import com.example.data.local.AppDatabase
 import com.example.data.local.dao.ConversationDao
 import com.example.data.local.dao.ConversationHistoryDao
@@ -63,7 +64,12 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            // DEBUG: summary only. Release: no HTTP logs (headers/API keys stay out of Logcat).
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
         return OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)

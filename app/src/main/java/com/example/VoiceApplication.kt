@@ -10,10 +10,10 @@ class VoiceApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Timber logging initialization
+        // Timber logging initialization — release builds plant no tree (no Logcat output)
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
+            Timber.i("VoiceApplication initialized successfully")
         }
-        Timber.i("VoiceApplication initialized successfully")
     }
 }

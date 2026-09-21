@@ -270,7 +270,8 @@ fun VoiceSettingsDialog(
                             onValueChange = { elevenLabsApiKey = it },
                             label = { Text("ElevenLabs API Anahtarı (Opsiyonel Nöral Ses)") },
                             placeholder = { Text("sk_1234567890...") },
-                            singleLine = true,
+                            singleLine = false,
+                            maxLines = 4,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )

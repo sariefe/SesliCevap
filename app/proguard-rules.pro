@@ -21,3 +21,7 @@
 
 # Timber & Coroutines
 -dontwarn timber.log.**
+
+# SQLCipher (sqlcipher-android)
+-keep class net.zetetic.database.** { *; }
+-dontwarn net.zetetic.database.**
