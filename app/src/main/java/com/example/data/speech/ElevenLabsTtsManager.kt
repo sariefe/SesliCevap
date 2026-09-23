@@ -56,10 +56,10 @@ class ElevenLabsTtsManager(
     ) {
         stop()
 
-        val keyToUse = elevenLabsApiKey.ifBlank {
-            BuildConfig.ELEVENLABS_API_KEY.ifBlank {
-                System.getenv("ELEVENLABS_API_KEY") ?: ""
-            }
+        val keyToUse = when {
+            elevenLabsApiKey.isNotBlank() -> elevenLabsApiKey
+            BuildConfig.ELEVENLABS_API_KEY.isNotBlank() -> BuildConfig.ELEVENLABS_API_KEY
+            else -> System.getenv("ELEVENLABS_API_KEY") ?: ""
         }
 
         if (keyToUse.isNotBlank()) {

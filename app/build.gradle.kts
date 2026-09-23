@@ -16,7 +16,7 @@ android {
   compileSdk { version = release(37) { minorApiLevel = 2 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.seslicevap.vwzkqa"
+    applicationId = "com.example.ai"
     minSdk = 24
     //noinspection OldTargetApi
     targetSdk = 36

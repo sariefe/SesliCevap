@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Sesli Cevap</string>
+    <string name="app_name">Sesli Cevap AI</string>
     <string name="nav_assistant">Sesli Asistan</string>
     <string name="nav_history">Geçmiş</string>
     <string name="nav_analytics">Analiz</string>
