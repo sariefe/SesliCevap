@@ -12,7 +12,6 @@ import com.example.data.local.dao.MessageDao
 import com.example.data.local.entity.ConversationEntity
 import com.example.data.local.entity.ConversationHistoryEntity
 import com.example.data.local.entity.MessageEntity
-import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [
@@ -40,7 +39,6 @@ abstract class AppDatabase : RoomDatabase() {
          */
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Index oluşturalım (eğer yoksa)
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_conversationId` ON `messages` (`conversationId`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_conversation_history_conversationId` ON `conversation_history` (`conversationId`)")
             }
@@ -49,18 +47,11 @@ abstract class AppDatabase : RoomDatabase() {
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val appContext = context.applicationContext
-                DatabasePassphraseProvider.migrateToEncryptedDatabaseIfNeeded(appContext, DATABASE_NAME)
-                System.loadLibrary("sqlcipher")
-
-                val passphrase = DatabasePassphraseProvider.getPassphrase(appContext)
-                val supportFactory = SupportOpenHelperFactory(passphrase)
-
                 val instance = Room.databaseBuilder(
                     appContext,
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .openHelperFactory(supportFactory)
                     .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigrationOnDowngrade(true)
                     .build()
