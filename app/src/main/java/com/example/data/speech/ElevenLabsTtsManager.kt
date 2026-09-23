@@ -51,6 +51,7 @@ class ElevenLabsTtsManager(
         speechRate: Float = 1.0f,
         pitch: Float = 1.0f,
         elevenLabsApiKey: String = "",
+        voiceId: String = defaultVoiceId,
         onDone: () -> Unit = {}
     ) {
         stop()
@@ -65,10 +66,10 @@ class ElevenLabsTtsManager(
             scope.launch {
                 try {
                     _ttsState.value = TtsState.Initializing
-                    Timber.d("ElevenLabs TTS request started")
                     val request = ElevenLabsTtsRequest(text = text)
+                    val targetVoiceId = voiceId.ifBlank { defaultVoiceId }
                     val responseBody = elevenLabsApiService.generateSpeechStream(
-                        voiceId = defaultVoiceId,
+                        voiceId = targetVoiceId,
                         apiKey = keyToUse,
                         request = request
                     )
@@ -80,20 +81,18 @@ class ElevenLabsTtsManager(
                         }
                     }
 
-                    Timber.i("ElevenLabs TTS request succeeded")
                     withContext(Dispatchers.Main) {
                         playAudioFile(tempFile, text, onDone)
                     }
                 } catch (e: Exception) {
-                    // Do not log API keys or request payloads — status only.
-                    Timber.w("ElevenLabs TTS failed, falling back to Native Android TTS: %s", e.javaClass.simpleName)
+                    Timber.w(e, "ElevenLabs TTS failed or quota exceeded, falling back to Native Android TTS")
                     withContext(Dispatchers.Main) {
                         nativeTtsManager.speak(text, speechRate, pitch, onDone)
                     }
                 }
             }
         } else {
-            Timber.d("ElevenLabs API key missing, using Native Android TTS")
+            // ElevenLabs anahtarı yoksa doğrudan insansı ayarlanmış yerel TTS'e geç
             nativeTtsManager.speak(text, speechRate, pitch, onDone)
         }
     }

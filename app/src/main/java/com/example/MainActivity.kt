@@ -98,8 +98,16 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
         onClearAllHistory = { viewModel.clearAllHistory() },
         getMessagesForConversation = { viewModel.getMessagesForConversation(it) },
         onDismissError = { viewModel.dismissError() },
-        onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey ->
-            viewModel.updateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey)
+        onUpdateSettings = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey, voiceId, persona ->
+            viewModel.updateSettings(
+                isVoiceEnabled = isVoiceEnabled,
+                autoSpeak = autoSpeak,
+                rate = rate,
+                pitch = pitch,
+                elevenLabsApiKey = elevenLabsKey,
+                selectedVoiceId = voiceId,
+                selectedPersona = persona
+            )
         },
         onPlayAudioText = { viewModel.playAudio(it, force = true) }
     )
@@ -122,7 +130,7 @@ fun VoiceAppRootContent(
     onClearAllHistory: () -> Unit,
     getMessagesForConversation: (Long) -> Flow<List<ChatMessage>>,
     onDismissError: () -> Unit,
-    onUpdateSettings: (Boolean, Boolean, Float, Float, String) -> Unit,
+    onUpdateSettings: (Boolean, Boolean, Float, Float, String, String, String) -> Unit,
     onPlayAudioText: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -312,8 +320,10 @@ fun VoiceAppRootContent(
             initialSpeechRate = uiState.speechRate,
             initialSpeechPitch = uiState.speechPitch,
             initialElevenLabsApiKey = uiState.elevenLabsApiKey,
-            onSave = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey ->
-                onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey)
+            initialSelectedVoiceId = uiState.selectedVoiceId,
+            initialSelectedPersona = uiState.selectedPersona,
+            onSave = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey, voiceId, persona ->
+                onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey, voiceId, persona)
             },
             onTestVoice = { _, _ ->
                 onPlayAudioText("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.")
@@ -371,7 +381,7 @@ fun VoiceAppRootPreview() {
             onClearAllHistory = {},
             getMessagesForConversation = { flowOf(emptyList()) },
             onDismissError = {},
-            onUpdateSettings = { _, _, _, _, _ -> },
+            onUpdateSettings = { _, _, _, _, _, _, _ -> },
             onPlayAudioText = {}
         )
     }

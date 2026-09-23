@@ -24,6 +24,14 @@ interface VoiceAssistantRepository {
         speechDurationMs: Long = 0L
     ): Result<ChatMessage>
 
+    suspend fun sendUserPromptStreaming(
+        conversationId: Long,
+        prompt: String,
+        speechDurationMs: Long = 0L,
+        persona: String = "Genel Dostane Asistan",
+        onSentenceReady: (String) -> Unit
+    ): Result<ChatMessage>
+
     suspend fun deleteConversation(conversationId: Long)
 
     suspend fun clearAllHistory()

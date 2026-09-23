@@ -67,7 +67,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
@@ -364,7 +366,7 @@ fun VoiceAssistantScreen(
                             text = "Mikrofon butonuna dokunup konuşun. Yapay zeka anında analiz ederek size sesli yanıt verecektir.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -449,7 +451,7 @@ fun VoiceAssistantScreen(
                                             text = partial.ifBlank { "Dinleniyor..." },
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                            fontStyle = FontStyle.Italic
                                         )
                                     }
                                 }
@@ -566,7 +568,7 @@ fun VoiceAssistantScreen(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                 ),
-                                maxLines = 3
+                                maxLines = 4
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(
@@ -652,7 +654,7 @@ fun VoiceAssistantScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = when {
-                                isListening -> "Dinleniyor... Bitirmek için dokunun"
+                                isListening -> "Dinleniyor... Tamamlamak için dokunun"
                                 isSpeaking -> "Seslendiriliyor... Durdurmak için dokunun"
                                 isProcessing -> "Yapay zeka yanıtlıyor..."
                                 else -> "Konuşmak için mikrofona dokunun"

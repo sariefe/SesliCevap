@@ -144,6 +144,24 @@ private class FakeVoiceRepository : VoiceAssistantRepository {
         )
     }
 
+    override suspend fun sendUserPromptStreaming(
+        conversationId: Long,
+        prompt: String,
+        speechDurationMs: Long,
+        persona: String,
+        onSentenceReady: (String) -> Unit
+    ): Result<ChatMessage> {
+        onSentenceReady("Test streaming sentence")
+        return Result.success(
+            ChatMessage(
+                id = 100L,
+                conversationId = conversationId,
+                sender = MessageSender.AI,
+                text = "Test response"
+            )
+        )
+    }
+
     override suspend fun deleteConversation(conversationId: Long) {}
 
     override suspend fun clearAllHistory() {}

@@ -64,7 +64,6 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            // DEBUG: summary only. Release: no HTTP logs (headers/API keys stay out of Logcat).
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BASIC
             } else {
@@ -112,13 +111,15 @@ object AppModule {
         conversationDao: ConversationDao,
         messageDao: MessageDao,
         geminiApiService: GeminiApiService,
-        conversationHistoryDao: ConversationHistoryDao
+        conversationHistoryDao: ConversationHistoryDao,
+        moshi: Moshi
     ): VoiceAssistantRepository {
         return VoiceAssistantRepositoryImpl(
             conversationDao = conversationDao,
             messageDao = messageDao,
             geminiApiService = geminiApiService,
-            conversationHistoryDao = conversationHistoryDao
+            conversationHistoryDao = conversationHistoryDao,
+            moshi = moshi
         )
     }
 

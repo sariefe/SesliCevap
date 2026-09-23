@@ -41,6 +41,8 @@ data class VoiceUiState(
     val speechRate: Float = 1.0f,
     val speechPitch: Float = 1.0f,
     val elevenLabsApiKey: String = "",
+    val selectedVoiceId: String = "21m00Tcm4TlvDq8ikWAM", // Rachel
+    val selectedPersona: String = "Genel Dostane Asistan",
     val userErrorMessage: String? = null
 )
 
@@ -274,19 +276,23 @@ class VoiceAssistantViewModel @Inject constructor(
     private fun processUserPrompt(conversationId: Long, prompt: String, durationMs: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isProcessingAi = true, userErrorMessage = null) }
-            val result = repository.sendUserPrompt(conversationId, prompt, durationMs)
+            val result = repository.sendUserPromptStreaming(
+                conversationId = conversationId,
+                prompt = prompt,
+                speechDurationMs = durationMs,
+                persona = _uiState.value.selectedPersona,
+                onSentenceReady = { sentence ->
+                    if (_uiState.value.isVoiceEnabled && _uiState.value.autoSpeak) {
+                        playAudio(sentence, force = true)
+                    }
+                }
+            )
             _uiState.update { it.copy(isProcessingAi = false) }
 
-            result.onSuccess { aiMessage ->
-                Timber.i(
-                    "AI response received, isVoiceEnabled=%b, autoSpeak=%b",
-                    _uiState.value.isVoiceEnabled, _uiState.value.autoSpeak
-                )
-                if (_uiState.value.isVoiceEnabled && _uiState.value.autoSpeak) {
-                    playAudio(aiMessage.text)
-                }
+            result.onSuccess { _ ->
+                Timber.i("AI streaming response completed successfully")
             }.onFailure { err ->
-                Timber.e(err, "Failed to get AI answer")
+                Timber.e(err, "Failed to get AI streaming answer")
                 // Hata zaten Türkçe geliyor (repository'de çevrildi)
                 _uiState.update {
                     it.copy(userErrorMessage = err.localizedMessage ?: "Yapay zeka yanıt veremedi.")
@@ -310,7 +316,8 @@ class VoiceAssistantViewModel @Inject constructor(
             text = text,
             speechRate = _uiState.value.speechRate,
             pitch = _uiState.value.speechPitch,
-            elevenLabsApiKey = _uiState.value.elevenLabsApiKey
+            elevenLabsApiKey = _uiState.value.elevenLabsApiKey,
+            voiceId = _uiState.value.selectedVoiceId
         )
     }
 
@@ -336,7 +343,9 @@ class VoiceAssistantViewModel @Inject constructor(
         autoSpeak: Boolean,
         rate: Float,
         pitch: Float,
-        elevenLabsApiKey: String = _uiState.value.elevenLabsApiKey
+        elevenLabsApiKey: String = _uiState.value.elevenLabsApiKey,
+        selectedVoiceId: String = _uiState.value.selectedVoiceId,
+        selectedPersona: String = _uiState.value.selectedPersona
     ) {
         if (!isVoiceEnabled) {
             stopVoiceInput()
@@ -348,7 +357,9 @@ class VoiceAssistantViewModel @Inject constructor(
                 autoSpeak = autoSpeak,
                 speechRate = rate,
                 speechPitch = pitch,
-                elevenLabsApiKey = elevenLabsApiKey
+                elevenLabsApiKey = elevenLabsApiKey,
+                selectedVoiceId = selectedVoiceId,
+                selectedPersona = selectedPersona
             )
         }
     }
