@@ -109,7 +109,10 @@ fun VoiceAppRoot(viewModel: VoiceAssistantViewModel) {
                 selectedPersona = persona
             )
         },
-        onPlayAudioText = { viewModel.playAudio(it, force = true) }
+        onPlayAudioText = { viewModel.playAudio(it, force = true) },
+        onTestVoice = { rate, pitch, voiceId, apiKey ->
+            viewModel.playAudioWithParams("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.", rate, pitch, voiceId, apiKey)
+        }
     )
 }
 
@@ -131,7 +134,8 @@ fun VoiceAppRootContent(
     getMessagesForConversation: (Long) -> Flow<List<ChatMessage>>,
     onDismissError: () -> Unit,
     onUpdateSettings: (Boolean, Boolean, Float, Float, String, String, String) -> Unit,
-    onPlayAudioText: (String) -> Unit
+    onPlayAudioText: (String) -> Unit,
+    onTestVoice: (Float, Float, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val navController = rememberNavController()
@@ -325,8 +329,8 @@ fun VoiceAppRootContent(
             onSave = { isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey, voiceId, persona ->
                 onUpdateSettings(isVoiceEnabled, autoSpeak, rate, pitch, elevenLabsKey, voiceId, persona)
             },
-            onTestVoice = { _, _ ->
-                onPlayAudioText("Merhaba! Sesli asistan test konuşması başarıyla yapılıyor.")
+            onTestVoice = { rate, pitch, voiceId, apiKey ->
+                onTestVoice(rate, pitch, voiceId, apiKey)
             }
         ) {
             showSettingsDialog = false
@@ -382,7 +386,8 @@ fun VoiceAppRootPreview() {
             getMessagesForConversation = { flowOf(emptyList()) },
             onDismissError = {},
             onUpdateSettings = { _, _, _, _, _, _, _ -> },
-            onPlayAudioText = {}
+            onPlayAudioText = {},
+            onTestVoice = { _, _, _, _ -> }
         )
     }
 }

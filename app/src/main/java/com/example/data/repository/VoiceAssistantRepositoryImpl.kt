@@ -46,6 +46,12 @@ class VoiceAssistantRepositoryImpl(
         }
     }
 
+    override suspend fun getAllConversationsOnce(): List<ConversationSession> {
+        return withContext(Dispatchers.IO) {
+            conversationDao.getAllConversationsOnce().map { it.toDomain() }
+        }
+    }
+
     override fun getMessagesForConversation(conversationId: Long): Flow<List<ChatMessage>> {
         return messageDao.getMessagesForConversation(conversationId).map { entities ->
             entities.map { it.toDomain() }
@@ -595,10 +601,16 @@ class VoiceAssistantRepositoryImpl(
     // Güvenlik: hassas log maskeleme
     // -------------------------------------------------------------------------
 
-    private fun maskSensitive(value: String): String {
-        val nonConstValue = value + ""
-        if (nonConstValue.isBlank()) return "***"
-        val visible = nonConstValue.take(4)
+    /**
+     * Masks sensitive strings (such as API keys or tokens) for secure logging,
+     * revealing only the first few characters.
+     */
+    @Suppress("SameParameterValue")
+    private fun maskSensitive(value: String?): String {
+        if (value.isNullOrBlank()) return "***"
+        val trimmed = value.trim()
+        if (trimmed.length <= 4) return "****"
+        val visible = trimmed.take(4)
         return "$visible***"
     }
 

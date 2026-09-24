@@ -556,7 +556,7 @@ fun VoiceAssistantScreen(
                         ) {
                             OutlinedTextField(
                                 value = textInput,
-                                onValueChange = { textInput = it },
+                                onValueChange = { if (it.length <= 500) textInput = it },
                                 placeholder = {
                                     Text(if (!uiState.isVoiceEnabled) "Metinle soru sorun..." else "Mesajınızı yazın...")
                                 },
@@ -568,7 +568,15 @@ fun VoiceAssistantScreen(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                 ),
-                                maxLines = 4
+                                maxLines = 4,
+                                singleLine = false,
+                                supportingText = {
+                                    Text(
+                                        text = "${textInput.length}/500",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (textInput.length >= 480) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             IconButton(

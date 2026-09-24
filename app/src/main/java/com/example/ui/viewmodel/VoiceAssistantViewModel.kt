@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.VoiceAssistantRepository
@@ -12,6 +13,7 @@ import com.example.domain.model.AnalyticsSummary
 import com.example.domain.model.ChatMessage
 import com.example.domain.model.ConversationSession
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,13 +21,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.content.edit
 
 data class VoiceUiState(
     val currentConversationId: Long? = null,
@@ -50,10 +52,23 @@ data class VoiceUiState(
 class VoiceAssistantViewModel @Inject constructor(
     private val repository: VoiceAssistantRepository,
     private val speechManager: SpeechRecognitionManager,
-    private val ttsManager: ElevenLabsTtsManager
+    private val ttsManager: ElevenLabsTtsManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(VoiceUiState())
+    private val prefs = context.getSharedPreferences("sesli_cevap_settings", Context.MODE_PRIVATE)
+
+    private val _uiState = MutableStateFlow(
+        VoiceUiState(
+            isVoiceEnabled = prefs.getBoolean("is_voice_enabled", true),
+            autoSpeak = prefs.getBoolean("auto_speak", true),
+            speechRate = prefs.getFloat("speech_rate", 1.0f),
+            speechPitch = prefs.getFloat("speech_pitch", 1.0f),
+            elevenLabsApiKey = prefs.getString("eleven_labs_key", "") ?: "",
+            selectedVoiceId = prefs.getString("selected_voice_id", "21m00Tcm4TlvDq8ikWAM") ?: "21m00Tcm4TlvDq8ikWAM",
+            selectedPersona = prefs.getString("selected_persona", "Genel Dostane Asistan") ?: "Genel Dostane Asistan"
+        )
+    )
     val uiState: StateFlow<VoiceUiState> = _uiState.asStateFlow()
 
     val conversations: StateFlow<List<ConversationSession>> = repository.getConversations()
@@ -185,8 +200,8 @@ class VoiceAssistantViewModel @Inject constructor(
 
     private fun initializeDefaultConversation() {
         viewModelScope.launch {
-            val list = conversations.first()
             if (_uiState.value.currentConversationId == null) {
+                val list = repository.getAllConversationsOnce()
                 if (list.isNotEmpty()) {
                     selectConversation(list.first().id)
                 } else {
@@ -199,15 +214,17 @@ class VoiceAssistantViewModel @Inject constructor(
 
     fun selectConversation(conversationId: Long) {
         _uiState.update { it.copy(currentConversationId = conversationId) }
+        viewModelScope.launch {
+            val session = repository.getConversationById(conversationId)
+            if (session != null) {
+                _uiState.update { it.copy(currentConversationTitle = session.title) }
+            }
+        }
         messagesJob?.cancel()
         messagesJob = viewModelScope.launch {
             repository.getMessagesForConversation(conversationId).collectLatest { msgs ->
                 _uiState.update { current ->
-                    val title = conversations.value
-                        .find { it.id == conversationId }
-                        ?.title
-                        ?: current.currentConversationTitle
-                    current.copy(messages = msgs, currentConversationTitle = title)
+                    current.copy(messages = msgs)
                 }
             }
         }
@@ -321,6 +338,22 @@ class VoiceAssistantViewModel @Inject constructor(
         )
     }
 
+    fun playAudioWithParams(
+        text: String,
+        speechRate: Float,
+        speechPitch: Float,
+        voiceId: String,
+        apiKey: String
+    ) {
+        ttsManager.speak(
+            text = text,
+            speechRate = speechRate,
+            pitch = speechPitch,
+            elevenLabsApiKey = apiKey,
+            voiceId = voiceId
+        )
+    }
+
     fun stopAudio() {
         ttsManager.stop()
     }
@@ -336,6 +369,7 @@ class VoiceAssistantViewModel @Inject constructor(
             stopAudio()
         }
         _uiState.update { it.copy(isVoiceEnabled = newVoiceEnabled) }
+        prefs.edit { putBoolean("is_voice_enabled", newVoiceEnabled) }
     }
 
     fun updateSettings(
@@ -361,6 +395,16 @@ class VoiceAssistantViewModel @Inject constructor(
                 selectedVoiceId = selectedVoiceId,
                 selectedPersona = selectedPersona
             )
+        }
+        prefs.edit().apply {
+            putBoolean("is_voice_enabled", isVoiceEnabled)
+            putBoolean("auto_speak", autoSpeak)
+            putFloat("speech_rate", rate)
+            putFloat("speech_pitch", pitch)
+            putString("eleven_labs_key", elevenLabsApiKey)
+            putString("selected_voice_id", selectedVoiceId)
+            putString("selected_persona", selectedPersona)
+            apply()
         }
     }
 

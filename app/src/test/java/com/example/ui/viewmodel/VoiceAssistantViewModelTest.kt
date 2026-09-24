@@ -20,11 +20,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.ResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -66,6 +68,7 @@ class VoiceAssistantViewModelTest {
             repository = fakeRepository,
             speechManager = speechManager,
             ttsManager = elevenLabsTtsManager,
+            context = context
         )
     }
 
@@ -114,20 +117,105 @@ class VoiceAssistantViewModelTest {
         viewModel.dismissError()
         assertNull(viewModel.uiState.value.userErrorMessage)
     }
+
+    @Test
+    fun `initialization creates new conversation when none exist`() = runTest {
+        testScheduler.advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertNotNull("currentConversationId should not be null", state.currentConversationId)
+        assertEquals("Yeni Sesli Sohbet", state.currentConversationTitle)
+    }
+
+    @Test
+    fun `initialization loads existing conversation when available`() = runTest {
+        val existingSession = ConversationSession(id = 42L, title = "Old Chat", lastUpdated = 12345L, messageCount = 2)
+        fakeRepository.setInitialConversations(listOf(existingSession))
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val newViewModel = VoiceAssistantViewModel(
+            repository = fakeRepository,
+            speechManager = speechManager,
+            ttsManager = elevenLabsTtsManager,
+            context = context
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(42L, newViewModel.uiState.value.currentConversationId)
+        assertEquals("Old Chat", newViewModel.uiState.value.currentConversationTitle)
+    }
+
+    @Test
+    fun `createNewConversation creates and selects new conversation`() = runTest {
+        viewModel.createNewConversation()
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Yeni Sesli Sohbet", state.currentConversationTitle)
+        assertNotNull(state.currentConversationId)
+    }
+
+    @Test
+    fun `sendTextMessage processes prompt successfully`() = runTest {
+        viewModel.sendTextMessage("Hello AI")
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isProcessingAi)
+        assertNull(viewModel.uiState.value.userErrorMessage)
+    }
+
+    @Test
+    fun `deleteConversation clears active and selects fallback`() = runTest {
+        viewModel.createNewConversation()
+        testScheduler.advanceUntilIdle()
+        val currentId = viewModel.uiState.value.currentConversationId!!
+
+        viewModel.deleteConversation(currentId)
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.currentConversationId)
+    }
+
+    @Test
+    fun `clearAllHistory resets and creates new default`() = runTest {
+        viewModel.clearAllHistory()
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.currentConversationId)
+        assertEquals("Yeni Sesli Sohbet", viewModel.uiState.value.currentConversationTitle)
+    }
 }
 
 private class FakeVoiceRepository : VoiceAssistantRepository {
     private val conversationsFlow = MutableStateFlow<List<ConversationSession>>(emptyList())
+    private val conversationsList = mutableListOf<ConversationSession>()
+    private var nextId = 1L
+
+    fun setInitialConversations(list: List<ConversationSession>) {
+        conversationsList.clear()
+        conversationsList.addAll(list)
+        conversationsFlow.value = list.toList()
+        if (list.isNotEmpty()) {
+            nextId = list.maxOf { it.id } + 1L
+        }
+    }
 
     override fun getConversations(): Flow<List<ConversationSession>> = conversationsFlow
+
+    override suspend fun getAllConversationsOnce(): List<ConversationSession> = conversationsList.toList()
 
     override fun getMessagesForConversation(conversationId: Long): Flow<List<ChatMessage>> = flowOf(emptyList())
 
     override fun getConversationHistory(): Flow<List<ConversationHistoryEntity>> = flowOf(emptyList())
 
-    override suspend fun getConversationById(id: Long): ConversationSession? = null
+    override suspend fun getConversationById(id: Long): ConversationSession? = conversationsList.find { it.id == id }
 
-    override suspend fun createNewConversation(title: String): Long = 1L
+    override suspend fun createNewConversation(title: String): Long {
+        val id = nextId++
+        val newSession = ConversationSession(id = id, title = title, lastUpdated = System.currentTimeMillis(), messageCount = 0)
+        conversationsList.add(0, newSession)
+        conversationsFlow.value = conversationsList.toList()
+        return id
+    }
 
     override suspend fun sendUserPrompt(
         conversationId: Long,
@@ -162,9 +250,15 @@ private class FakeVoiceRepository : VoiceAssistantRepository {
         )
     }
 
-    override suspend fun deleteConversation(conversationId: Long) {}
+    override suspend fun deleteConversation(conversationId: Long) {
+        conversationsList.removeAll { it.id == conversationId }
+        conversationsFlow.value = conversationsList.toList()
+    }
 
-    override suspend fun clearAllHistory() {}
+    override suspend fun clearAllHistory() {
+        conversationsList.clear()
+        conversationsFlow.value = emptyList()
+    }
 
     override fun getAnalytics(): Flow<AnalyticsSummary> {
         return flowOf(

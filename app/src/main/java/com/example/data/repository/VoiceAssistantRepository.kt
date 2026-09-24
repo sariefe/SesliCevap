@@ -10,6 +10,8 @@ interface VoiceAssistantRepository {
 
     fun getConversations(): Flow<List<ConversationSession>>
 
+    suspend fun getAllConversationsOnce(): List<ConversationSession>
+
     fun getMessagesForConversation(conversationId: Long): Flow<List<ChatMessage>>
 
     fun getConversationHistory(): Flow<List<ConversationHistoryEntity>>

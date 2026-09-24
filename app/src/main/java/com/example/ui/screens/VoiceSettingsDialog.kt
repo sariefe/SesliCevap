@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Mic
@@ -61,7 +63,7 @@ fun VoiceSettingsDialog(
     initialSelectedVoiceId: String = "21m00Tcm4TlvDq8ikWAM",
     initialSelectedPersona: String = "Genel Dostane Asistan",
     onSave: (isVoiceEnabled: Boolean, autoSpeak: Boolean, speechRate: Float, speechPitch: Float, elevenLabsApiKey: String, selectedVoiceId: String, selectedPersona: String) -> Unit,
-    onTestVoice: (speechRate: Float, speechPitch: Float) -> Unit,
+    onTestVoice: (speechRate: Float, speechPitch: Float, selectedVoiceId: String, elevenLabsApiKey: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var isVoiceEnabled by remember { mutableStateOf(initialIsVoiceEnabled) }
@@ -104,6 +106,7 @@ fun VoiceSettingsDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -316,7 +319,7 @@ fun VoiceSettingsDialog(
 
                         // Test voice button
                         FilledTonalButton(
-                            onClick = { onTestVoice(speechRate, speechPitch) },
+                            onClick = { onTestVoice(speechRate, speechPitch, selectedVoiceId, elevenLabsApiKey) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("test_voice_button")
@@ -362,7 +365,7 @@ fun VoiceSettingsDialogPreview() {
             initialSpeechRate = 1.0f,
             initialSpeechPitch = 1.0f,
             onSave = { _, _, _, _, _, _, _ -> },
-            onTestVoice = { _, _ -> },
+            onTestVoice = { _, _, _, _ -> },
             onDismiss = {}
         )
     }
